@@ -1,20 +1,48 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# CSV to SQL Converter
 
-# Run and deploy your AI Studio app
+Uma aplicação Single Page (SPA) de alta performance desenvolvida com Angular 21 para converter dados CSV em instruções SQL INSERT.
 
-This contains everything you need to run your app locally.
+Este projeto foi prototipado para rodar inteiramente no Client-side, garantindo privacidade e velocidade, sem necessidade de backend ou chaves de API.
 
-View your app in AI Studio: https://ai.studio/apps/drive/1cu2DdRnIL0SDrZ_oRpKE5QzXtiy1G0Tk
+## Tecnologias
 
-## Run Locally
+- **Framework:** Angular 21 (Standalone Components)  
+- **State Management:** Angular Signals (signal, computed, effect)  
+- **Build Tool:** Vite (via Angular CLI)  
+- **Estilização:** Tailwind CSS  
+- **Linguagem:** TypeScript 5.8  
 
-**Prerequisites:**  Node.js
+## Funcionalidades
 
+- **Conversão Reativa:** Utiliza a arquitetura de Signals para converter o input CSV em SQL instantaneamente ao digitar ou colar.  
+- **Processamento Local:** Toda a lógica de parseamento e geração de strings roda no navegador do usuário.  
+- **Leve e Rápido:** Sem dependências pesadas de IA ou serviços de nuvem.  
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+## Como rodar o projeto
+
+### Pré-requisitos
+
+- Node.js (v18 ou superior)
+
+### Instalação das dependências
+
+```bash
+npm install
+````
+
+### Executar o servidor de desenvolvimento
+
+```bash
+npm run dev
+# ou
+ng serve
+```
+
+### Acesso
+
+Abra o navegador em:
+[http://localhost:4200](http://localhost:4200)
+
+## Arquitetura
+
+O projeto não utiliza RxJS complexo (BehaviorSubjects) para o fluxo de dados principal, optando pela nova primitiva reativa do Angular:
