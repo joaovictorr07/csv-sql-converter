@@ -1,7 +1,10 @@
 import { Component, input, output, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { TableConfig, StoreService, ColumnMapping, BooleanMode } from '../services/store.service';
+import { TableConfig } from '../models/table-config';
+import { StoreService } from '../services/store.service';
+import { BooleanMode } from '../types/boolean-mode';
+import { ColumnMapping } from '../models/column-mapping';
 
 @Component({
   selector: 'app-table-config',
