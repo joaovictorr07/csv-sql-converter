@@ -1,0 +1,5 @@
+{
+  "name": "CSV to SQL Converter",
+  "description": "Convert CSV files into relational SQL scripts. Define Primary Keys, Foreign Keys, and parent-child relationships to generate INSERT, UPDATE, or DELETE statements.",
+  "requestFramePermissions": []
+}
