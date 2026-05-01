@@ -1,21 +1,21 @@
-<div class="max-w-6xl mx-auto p-4 md:p-8">
-  <header class="mb-8 flex items-center justify-between">
+﻿<div class="mx-auto w-full max-w-6xl px-3 py-4 sm:px-4 md:px-6 md:py-6 lg:px-8 lg:py-8">
+  <header class="mb-6 flex flex-col gap-2 sm:mb-8">
     <div>
-      <h1 class="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">
+      <h1 class="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-2xl font-bold text-transparent sm:text-3xl">
         CSV to SQL Converter
       </h1>
-      <p class="text-slate-400 mt-2">Transform CSV data into relational SQL scripts with ease.</p>
+      <p class="mt-2 text-sm text-slate-400 sm:text-base">Transform CSV data into relational SQL scripts with ease.</p>
     </div>
   </header>
 
-  <main class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+  <main class="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-8">
     <!-- Left Column: Config -->
-    <div class="lg:col-span-2 space-y-6">
+    <div class="space-y-6 lg:col-span-2">
       
       <!-- Upload Section -->
       <section>
-        <h2 class="text-lg font-semibold text-white mb-3 flex items-center gap-2">
-          <span class="bg-blue-600 text-xs text-white px-2 py-0.5 rounded-full">1</span>
+        <h2 class="mb-3 flex items-center gap-2 text-lg font-semibold text-white">
+          <span class="rounded-full bg-blue-600 px-2 py-0.5 text-xs text-white">1</span>
           Import Data
         </h2>
         <app-upload (filesUploaded)="onFiles($event)"></app-upload>
@@ -24,8 +24,8 @@
       <!-- Tables Config Section -->
       @if (store.tables().length > 0) {
         <section>
-          <h2 class="text-lg font-semibold text-white mb-3 flex items-center gap-2">
-            <span class="bg-blue-600 text-xs text-white px-2 py-0.5 rounded-full">2</span>
+          <h2 class="mb-3 flex items-center gap-2 text-lg font-semibold text-white">
+            <span class="rounded-full bg-blue-600 px-2 py-0.5 text-xs text-white">2</span>
             Configure Tables & Relationships
           </h2>
           
@@ -45,20 +45,20 @@
 
     <!-- Right Column: Generation Controls & Output -->
     <div class="lg:col-span-1">
-      <div class="sticky top-8 space-y-6">
+      <div class="space-y-6 xl:sticky xl:top-8">
         
         <!-- Controls -->
-        <div class="bg-slate-800 rounded-xl border border-slate-700 p-6 shadow-lg">
-          <h2 class="text-lg font-semibold text-white mb-4 flex items-center gap-2">
-            <span class="bg-blue-600 text-xs text-white px-2 py-0.5 rounded-full">3</span>
+        <div class="rounded-xl border border-slate-700 bg-slate-800 p-4 shadow-lg sm:p-6">
+          <h2 class="mb-4 flex items-center gap-2 text-lg font-semibold text-white">
+            <span class="rounded-full bg-blue-600 px-2 py-0.5 text-xs text-white">3</span>
             Generate
           </h2>
 
-          <div class="space-y-4 mb-6">
+          <div class="mb-6 space-y-4">
             <label class="block text-sm text-slate-400">SQL Operation</label>
-            <div class="grid grid-cols-3 gap-2 p-1 bg-slate-900 rounded-lg">
+            <div class="grid grid-cols-1 gap-2 rounded-lg bg-slate-900 p-1 sm:grid-cols-3">
               <button 
-                class="px-3 py-2 rounded text-sm font-medium transition-colors"
+                class="rounded px-3 py-2 text-sm font-medium transition-colors"
                 [class.bg-blue-600]="store.sqlOperation() === 'INSERT'"
                 [class.text-white]="store.sqlOperation() === 'INSERT'"
                 [class.text-slate-400]="store.sqlOperation() !== 'INSERT'"
@@ -66,7 +66,7 @@
                 (click)="store.setOperation('INSERT')"
               >INSERT</button>
               <button 
-                class="px-3 py-2 rounded text-sm font-medium transition-colors"
+                class="rounded px-3 py-2 text-sm font-medium transition-colors"
                 [class.bg-blue-600]="store.sqlOperation() === 'UPDATE'"
                 [class.text-white]="store.sqlOperation() === 'UPDATE'"
                 [class.text-slate-400]="store.sqlOperation() !== 'UPDATE'"
@@ -74,7 +74,7 @@
                 (click)="store.setOperation('UPDATE')"
               >UPDATE</button>
               <button 
-                class="px-3 py-2 rounded text-sm font-medium transition-colors"
+                class="rounded px-3 py-2 text-sm font-medium transition-colors"
                 [class.bg-blue-600]="store.sqlOperation() === 'DELETE'"
                 [class.text-white]="store.sqlOperation() === 'DELETE'"
                 [class.text-slate-400]="store.sqlOperation() !== 'DELETE'"
@@ -83,35 +83,41 @@
               >DELETE</button>
             </div>
             @if (store.sqlOperation() !== 'INSERT') {
-              <p class="text-xs text-yellow-500/80 bg-yellow-500/10 p-2 rounded">
+              <p class="rounded bg-yellow-500/10 p-2 text-xs text-yellow-500/80">
                 Note: UPDATE and DELETE require a valid Primary Key to be selected for each table.
               </p>
             }
           </div>
 
           <button 
-            (click)="store.generate()"
-            [disabled]="store.tables().length === 0"
-            class="w-full bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 text-white font-bold py-3 px-4 rounded-lg shadow-lg shadow-blue-900/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed transform active:scale-95"
+            (click)="onGenerate()"
+            [disabled]="store.tables().length === 0 || store.isGenerating()"
+            class="w-full transform rounded-lg bg-gradient-to-r from-blue-500 to-blue-600 px-4 py-3 font-bold text-white shadow-lg shadow-blue-900/50 transition-all hover:from-blue-400 hover:to-blue-500 active:scale-95 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Generate SQL
+            {{ store.isGenerating() ? 'Generating...' : 'Generate SQL' }}
           </button>
+          @if (store.generationError()) {
+            <p class="mt-3 rounded border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+              {{ store.generationError() }}
+            </p>
+          }
         </div>
 
         <!-- Output -->
         @if (store.generatedSql()) {
-          <div class="bg-slate-900 rounded-xl border border-slate-700 overflow-hidden shadow-lg flex flex-col h-[600px]">
-            <div class="bg-slate-800 px-4 py-2 border-b border-slate-700 flex items-center justify-between">
+          <div class="flex min-h-[320px] max-h-[70vh] flex-col overflow-hidden rounded-xl border border-slate-700 bg-slate-900 shadow-lg md:h-[600px] md:max-h-none">
+            <div class="flex items-center justify-between border-b border-slate-700 bg-slate-800 px-4 py-2">
               <span class="text-xs font-mono text-slate-400">output.sql</span>
               <button 
                 (click)="copyToClipboard()"
-                class="text-xs text-blue-400 hover:text-blue-300"
+                [disabled]="store.isGenerating()"
+                class="text-xs text-blue-400 hover:text-blue-300 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {{ copied() ? 'Copied!' : 'Copy' }}
               </button>
             </div>
-            <div class="flex-1 overflow-auto custom-scrollbar p-4">
-              <pre class="text-xs font-mono text-green-400 whitespace-pre"><code>{{ store.generatedSql() }}</code></pre>
+            <div class="custom-scrollbar flex-1 overflow-auto p-4">
+              <pre class="whitespace-pre-wrap break-words text-xs font-mono text-green-400"><code>{{ store.generatedSql() }}</code></pre>
             </div>
           </div>
         }
@@ -120,3 +126,4 @@
     </div>
   </main>
 </div>
+<app-loading-overlay></app-loading-overlay>
