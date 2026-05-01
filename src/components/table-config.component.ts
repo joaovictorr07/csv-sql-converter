@@ -1,4 +1,4 @@
-import { Component, input, output, inject, signal } from '@angular/core';
+﻿import { Component, input, output, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { TableConfig } from '../models/table-config';
@@ -11,10 +11,10 @@ import { ColumnMapping } from '../models/column-mapping';
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="bg-slate-800 rounded-lg border border-slate-700 p-4 shadow-sm mb-4 transition-all">
+    <div class="mb-4 rounded-lg border border-slate-700 bg-slate-800 p-3 shadow-sm transition-all sm:p-4">
       <!-- Header / Top Bar -->
-      <div class="flex items-center justify-between mb-4">
-        <div class="flex items-center gap-3">
+      <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div class="flex min-w-0 items-center gap-3">
           <input 
             type="checkbox" 
             [checked]="config().selected"
@@ -29,7 +29,7 @@ import { ColumnMapping } from '../models/column-mapping';
              </div>
           </div>
         </div>
-        <button (click)="remove.emit(config().id)" class="text-red-400 hover:text-red-300 text-sm">
+        <button (click)="remove.emit(config().id)" class="self-end text-sm text-red-400 hover:text-red-300 sm:self-auto">
           Remove
         </button>
       </div>
@@ -107,14 +107,14 @@ import { ColumnMapping } from '../models/column-mapping';
         </button>
         
         @if (showParentCols()) {
-          <div class="p-3 bg-slate-900/50 max-h-60 overflow-y-auto custom-scrollbar">
-            <div class="grid grid-cols-12 gap-2 text-xs text-slate-500 mb-2 px-1">
+          <div class="custom-scrollbar max-h-60 overflow-x-auto overflow-y-auto bg-slate-900/50 p-3 sm:max-h-72">
+            <div class="mb-2 grid min-w-[540px] grid-cols-12 gap-2 px-1 text-xs text-slate-500">
               <div class="col-span-1 text-center">Inc.</div>
               <div class="col-span-5">CSV Header</div>
               <div class="col-span-6">SQL Column</div>
             </div>
             @for (map of config().parentMappings; track map.original) {
-              <div class="grid grid-cols-12 gap-2 items-center mb-2">
+              <div class="mb-2 grid min-w-[540px] grid-cols-12 items-center gap-2">
                 <div class="col-span-1 flex justify-center">
                   <input 
                     type="checkbox" 
@@ -154,7 +154,7 @@ import { ColumnMapping } from '../models/column-mapping';
       </div>
 
       @if (config().hasChildInSameFile) {
-        <div class="ml-4 border-l-2 border-purple-500/30 pl-4 animate-in fade-in slide-in-from-top-2">
+        <div class="mt-3 border-l-2 border-purple-500/30 pl-3 animate-in fade-in slide-in-from-top-2 sm:ml-4 sm:pl-4">
            <h4 class="text-sm text-purple-300 font-semibold mb-3">Child Table Settings</h4>
            
            <div class="mb-4">
@@ -178,14 +178,14 @@ import { ColumnMapping } from '../models/column-mapping';
               </button>
               
               @if (showChildCols()) {
-                <div class="p-3 bg-slate-900/50 max-h-60 overflow-y-auto custom-scrollbar">
-                  <div class="grid grid-cols-12 gap-2 text-xs text-slate-500 mb-2 px-1">
+                <div class="custom-scrollbar max-h-60 overflow-x-auto overflow-y-auto bg-slate-900/50 p-3 sm:max-h-72">
+                  <div class="mb-2 grid min-w-[540px] grid-cols-12 gap-2 px-1 text-xs text-slate-500">
                     <div class="col-span-1 text-center">Inc.</div>
                     <div class="col-span-5">CSV Header</div>
                     <div class="col-span-6">SQL Column</div>
                   </div>
                   @for (map of config().childMappings; track map.original) {
-                    <div class="grid grid-cols-12 gap-2 items-center mb-2">
+                    <div class="mb-2 grid min-w-[540px] grid-cols-12 items-center gap-2">
                       <div class="col-span-1 flex justify-center">
                         <input 
                           type="checkbox" 
