@@ -8,7 +8,7 @@
     "languageLabel": "Idioma"
   },
   "languages": {
-    "pt-BR": "Português (Brasil)",
+    "pt-BR": "Portugu\u00eas (Brasil)",
     "en": "English"
   },
   "steps": {
@@ -17,8 +17,8 @@
     "generate": "Gerar"
   },
   "generation": {
-    "sqlOperation": "Operação SQL",
-    "primaryKeyNote": "Observação: UPDATE e DELETE exigem uma chave primária válida selecionada para cada tabela.",
+    "sqlOperation": "Opera\u00e7\u00e3o SQL",
+    "primaryKeyNote": "Observa\u00e7\u00e3o: UPDATE e DELETE exigem uma chave prim\u00e1ria v\u00e1lida selecionada para cada tabela.",
     "generateSql": "Gerar SQL",
     "generating": "Gerando...",
     "copy": "Copiar",
@@ -26,40 +26,47 @@
   },
   "upload": {
     "prompt": "Solte arquivos CSV aqui ou clique para fazer upload",
-    "support": "Suporta múltiplos arquivos"
+    "support": "Suporta m\u00faltiplos arquivos"
   },
   "tableConfig": {
     "remove": "Remover",
     "rows": "{{count}} linhas",
     "columns": "{{count}} colunas",
-    "parsingSettings": "Configurações de parsing e valores do CSV",
+    "parsingSettings": "Configura\u00e7\u00f5es de parsing e valores do CSV",
     "delimiter": "Delimitador",
     "delimiterReparseHint": "Alterar isso reprocessa o arquivo.",
     "delimiters": {
-      "comma": "Vírgula (,)",
-      "semicolon": "Ponto e vírgula (;)",
+      "comma": "V\u00edrgula (,)",
+      "semicolon": "Ponto e v\u00edrgula (;)",
       "pipe": "Pipe (|)",
-      "tab": "Tabulação (\\t)"
+      "tab": "Tabula\u00e7\u00e3o (\\t)"
     },
     "booleanHandling": "Tratamento de booleano (0/1)",
     "booleanOptions": {
-      "AS_IS": "Como está (0 ou 1)",
+      "AS_IS": "Como est\u00e1 (0 ou 1)",
       "TRUE_FALSE": "Booleano SQL (FALSE/TRUE)",
-      "BIT": "Numérico (0/1)",
+      "BIT": "Num\u00e9rico (0/1)",
       "STRING": "Texto ('0'/'1')"
     },
     "sqlTableName": "Nome da tabela SQL",
-    "primaryKeyGrouping": "Chave primária (chave de agrupamento)",
-    "primaryKeyPk": "Chave primária (PK)",
+    "primaryKeyGrouping": "Chave prim\u00e1ria (chave de agrupamento)",
+    "primaryKeyPk": "Chave prim\u00e1ria (PK)",
     "selectColumn": "-- Selecionar coluna --",
     "parentColumnMapping": "Mapeamento de colunas (pai)",
     "childColumnMapping": "Mapeamento de colunas (filho)",
     "columnMappingSelected": "{{count}} selecionadas",
     "include": "Inc.",
-    "csvHeader": "Cabeçalho CSV",
+    "csvHeader": "Cabe\u00e7alho CSV",
     "sqlColumn": "Coluna SQL",
+    "valueType": "Tipo",
+    "valueTypes": {
+      "string": "Texto",
+      "int": "Inteiro",
+      "decimal": "Decimal",
+      "bool": "Booleano"
+    },
     "hasChildInSameFile": "Tem tabela filha no mesmo arquivo?",
-    "childTableSettings": "Configurações da tabela filha",
+    "childTableSettings": "Configura\u00e7\u00f5es da tabela filha",
     "childSqlTableName": "Nome da tabela SQL filha",
     "parentTableDifferentFile": "Tabela pai (arquivo diferente)",
     "noExternalParent": "-- Sem pai externo --",
@@ -91,21 +98,22 @@
       }
     },
     "sqlGeneration": {
+      "INVALID_TYPED_VALUE": "Valor inv\u00e1lido para gera\u00e7\u00e3o SQL em {{tableName}}. Coluna CSV: {{columnOriginal}}, coluna SQL: {{columnSqlName}}, tipo esperado: {{expectedType}}, valor recebido: {{rawValue}}.",
       "UNEXPECTED_GENERATION_ERROR": "Falha ao gerar o SQL.",
-      "WORKER_RUNTIME_ERROR": "A geração de SQL falhou durante a execução em segundo plano.",
-      "WORKER_INVALID_RESPONSE": "A geração de SQL retornou uma resposta inválida.",
-      "WORKER_EXECUTION_ERROR": "O worker de geração de SQL encontrou um erro inesperado."
+      "WORKER_RUNTIME_ERROR": "A gera\u00e7\u00e3o de SQL falhou durante a execu\u00e7\u00e3o em segundo plano.",
+      "WORKER_INVALID_RESPONSE": "A gera\u00e7\u00e3o de SQL retornou uma resposta inv\u00e1lida.",
+      "WORKER_EXECUTION_ERROR": "O worker de gera\u00e7\u00e3o de SQL encontrou um erro inesperado."
     }
   },
   "sql": {
     "generatedScript": "Script SQL gerado",
-    "operationLabel": "Operação",
+    "operationLabel": "Opera\u00e7\u00e3o",
     "dateLabel": "Data",
     "sourceFileLabel": "Arquivo de origem",
     "noColumnsSelected": "Nenhuma coluna selecionada para {{tableName}}",
-    "pkRequiredUpdate": "Erro: PK obrigatória para UPDATE",
-    "pkColumnNotIncluded": "Erro: coluna PK não incluída no mapeamento",
-    "pkRequiredDelete": "Erro: PK obrigatória para DELETE",
-    "pkGroupingRequiredParentChild": "Erro: chave primária (chave de agrupamento) obrigatória para geração pai-filho em {{tableName}}"
+    "pkRequiredUpdate": "Erro: PK obrigat\u00f3ria para UPDATE",
+    "pkColumnNotIncluded": "Erro: coluna PK n\u00e3o inclu\u00edda no mapeamento",
+    "pkRequiredDelete": "Erro: PK obrigat\u00f3ria para DELETE",
+    "pkGroupingRequiredParentChild": "Erro: chave prim\u00e1ria (chave de agrupamento) obrigat\u00f3ria para gera\u00e7\u00e3o pai-filho em {{tableName}}"
   }
 }

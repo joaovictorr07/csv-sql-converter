@@ -6,6 +6,7 @@ import { TableConfig } from '../models/table-config';
 import { I18nService } from '../services/i18n.service';
 import { StoreService } from '../services/store.service';
 import { BooleanMode } from '../types/boolean-mode';
+import { ColumnValueType } from '../types/column-value-type';
 
 @Component({
   selector: 'app-table-config',
@@ -106,13 +107,14 @@ import { BooleanMode } from '../types/boolean-mode';
 
         @if (showParentCols()) {
           <div class="custom-scrollbar max-h-60 overflow-x-auto overflow-y-auto bg-slate-900/50 p-3 sm:max-h-72">
-            <div class="mb-2 grid min-w-[540px] grid-cols-12 gap-2 px-1 text-xs text-slate-500">
+            <div class="mb-2 grid min-w-[500px] grid-cols-12 gap-2 px-1 text-xs text-slate-500">
               <div class="col-span-1 text-center">{{ i18n.t('tableConfig.include') }}</div>
-              <div class="col-span-5">{{ i18n.t('tableConfig.csvHeader') }}</div>
-              <div class="col-span-6">{{ i18n.t('tableConfig.sqlColumn') }}</div>
+              <div class="col-span-4">{{ i18n.t('tableConfig.csvHeader') }}</div>
+              <div class="col-span-4">{{ i18n.t('tableConfig.sqlColumn') }}</div>
+              <div class="col-span-3">{{ i18n.t('tableConfig.valueType') }}</div>
             </div>
             @for (map of config().parentMappings; track map.original) {
-              <div class="mb-2 grid min-w-[540px] grid-cols-12 items-center gap-2">
+              <div class="mb-2 grid min-w-[500px] grid-cols-12 items-center gap-2">
                 <div class="col-span-1 flex justify-center">
                   <input
                     type="checkbox"
@@ -121,16 +123,27 @@ import { BooleanMode } from '../types/boolean-mode';
                     class="rounded border-slate-600 bg-slate-800 text-blue-500"
                   >
                 </div>
-                <div class="col-span-5 truncate font-mono text-xs text-slate-300" title="{{ map.original }}">
+                <div class="col-span-4 truncate font-mono text-xs text-slate-300" title="{{ map.original }}">
                   {{ map.original }}
                 </div>
-                <div class="col-span-6">
+                <div class="col-span-4">
                   <input
                     type="text"
                     [ngModel]="map.sqlName"
                     (change)="updateParentMap(map.original, { sqlName: $any($event.target).value })"
                     class="w-full rounded border border-slate-700 bg-slate-800 px-2 py-1 text-xs text-white outline-none focus:border-blue-500"
                   >
+                </div>
+                <div class="col-span-3">
+                  <select
+                    [ngModel]="map.valueType"
+                    (ngModelChange)="updateParentType(map.original, $event)"
+                    class="w-full rounded border border-slate-700 bg-slate-800 px-2 py-1 text-xs text-white outline-none focus:border-blue-500"
+                  >
+                    @for (valueType of valueTypes; track valueType) {
+                      <option [value]="valueType">{{ i18n.t('tableConfig.valueTypes.' + valueType) }}</option>
+                    }
+                  </select>
                 </div>
               </div>
             }
@@ -175,13 +188,14 @@ import { BooleanMode } from '../types/boolean-mode';
 
               @if (showChildCols()) {
                 <div class="custom-scrollbar max-h-60 overflow-x-auto overflow-y-auto bg-slate-900/50 p-3 sm:max-h-72">
-                  <div class="mb-2 grid min-w-[540px] grid-cols-12 gap-2 px-1 text-xs text-slate-500">
+                  <div class="mb-2 grid min-w-[500px] grid-cols-12 gap-2 px-1 text-xs text-slate-500">
                     <div class="col-span-1 text-center">{{ i18n.t('tableConfig.include') }}</div>
-                    <div class="col-span-5">{{ i18n.t('tableConfig.csvHeader') }}</div>
-                    <div class="col-span-6">{{ i18n.t('tableConfig.sqlColumn') }}</div>
+                    <div class="col-span-4">{{ i18n.t('tableConfig.csvHeader') }}</div>
+                    <div class="col-span-4">{{ i18n.t('tableConfig.sqlColumn') }}</div>
+                    <div class="col-span-3">{{ i18n.t('tableConfig.valueType') }}</div>
                   </div>
                   @for (map of config().childMappings; track map.original) {
-                    <div class="mb-2 grid min-w-[540px] grid-cols-12 items-center gap-2">
+                    <div class="mb-2 grid min-w-[500px] grid-cols-12 items-center gap-2">
                       <div class="col-span-1 flex justify-center">
                         <input
                           type="checkbox"
@@ -190,16 +204,27 @@ import { BooleanMode } from '../types/boolean-mode';
                           class="rounded border-slate-600 bg-slate-800 text-purple-500"
                         >
                       </div>
-                      <div class="col-span-5 truncate font-mono text-xs text-slate-300" title="{{ map.original }}">
+                      <div class="col-span-4 truncate font-mono text-xs text-slate-300" title="{{ map.original }}">
                         {{ map.original }}
                       </div>
-                      <div class="col-span-6">
+                      <div class="col-span-4">
                         <input
                           type="text"
                           [ngModel]="map.sqlName"
                           (change)="updateChildMap(map.original, { sqlName: $any($event.target).value })"
                           class="w-full rounded border border-slate-700 bg-slate-800 px-2 py-1 text-xs text-white outline-none focus:border-purple-500"
                         >
+                      </div>
+                      <div class="col-span-3">
+                        <select
+                          [ngModel]="map.valueType"
+                          (ngModelChange)="updateChildType(map.original, $event)"
+                          class="w-full rounded border border-slate-700 bg-slate-800 px-2 py-1 text-xs text-white outline-none focus:border-purple-500"
+                        >
+                          @for (valueType of valueTypes; track valueType) {
+                            <option [value]="valueType">{{ i18n.t('tableConfig.valueTypes.' + valueType) }}</option>
+                          }
+                        </select>
                       </div>
                     </div>
                   }
@@ -246,6 +271,7 @@ import { BooleanMode } from '../types/boolean-mode';
 export class TableConfigComponent {
   config = input.required<TableConfig>();
   tableOptions = input.required<{ id: string; name: string }[]>();
+  valueTypes: ColumnValueType[] = ['string', 'int', 'decimal', 'bool'];
 
   remove = output<string>();
 
@@ -311,6 +337,10 @@ export class TableConfigComponent {
     this.store.updateParentMapping(this.config().id, original, changes);
   }
 
+  updateParentType(original: string, valueType: ColumnValueType) {
+    this.store.updateParentMapping(this.config().id, original, { valueType });
+  }
+
   updateChildMap(original: string, changes: Partial<ColumnMapping>) {
     if (changes.sqlName !== undefined && Object.keys(changes).length === 1) {
       this.store.updateChildMappingSqlName(this.config().id, original, changes.sqlName);
@@ -318,6 +348,10 @@ export class TableConfigComponent {
     }
 
     this.store.updateChildMapping(this.config().id, original, changes);
+  }
+
+  updateChildType(original: string, valueType: ColumnValueType) {
+    this.store.updateChildMapping(this.config().id, original, { valueType });
   }
 
   countIncluded(mappings: ColumnMapping[]) {

@@ -176,11 +176,7 @@ export class StoreService {
 
       this.generatedSql.set(sql);
     } catch (error) {
-      this.generationError.set(
-        error instanceof SqlGenerationError
-          ? this.i18n.t(`errors.sqlGeneration.${error.code}`)
-          : this.i18n.t('errors.sqlGeneration.UNEXPECTED_GENERATION_ERROR')
-      );
+      this.generationError.set(this.buildGenerationErrorMessage(error));
     } finally {
       this.isGenerating.set(false);
     }
@@ -310,7 +306,8 @@ export class StoreService {
     return {
       original: header,
       sqlName: normalizeSqlIdentifier(header),
-      include
+      include,
+      valueType: 'string'
     };
   }
 
@@ -407,5 +404,23 @@ export class StoreService {
 
   private buildDuplicateIdentifierError(identifier: string, context: string): string {
     return this.i18n.t('errors.validation.DUPLICATE_SQL_IDENTIFIER', { identifier, context });
+  }
+
+  private buildGenerationErrorMessage(error: unknown): string {
+    if (!(error instanceof SqlGenerationError)) {
+      return this.i18n.t('errors.sqlGeneration.UNEXPECTED_GENERATION_ERROR');
+    }
+
+    if (error.code !== 'INVALID_TYPED_VALUE' || !error.details) {
+      return this.i18n.t(`errors.sqlGeneration.${error.code}`);
+    }
+
+    return this.i18n.t('errors.sqlGeneration.INVALID_TYPED_VALUE', {
+      tableName: error.details.tableName,
+      columnOriginal: error.details.columnOriginal,
+      columnSqlName: error.details.columnSqlName,
+      expectedType: this.i18n.t(`tableConfig.valueTypes.${error.details.expectedType}`),
+      rawValue: error.details.rawValue
+    });
   }
 }

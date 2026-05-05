@@ -58,6 +58,13 @@
     "include": "Inc.",
     "csvHeader": "CSV Header",
     "sqlColumn": "SQL Column",
+    "valueType": "Type",
+    "valueTypes": {
+      "string": "String",
+      "int": "Integer",
+      "decimal": "Decimal",
+      "bool": "Boolean"
+    },
     "hasChildInSameFile": "Has Child Table in Same File?",
     "childTableSettings": "Child Table Settings",
     "childSqlTableName": "Child SQL Table Name",
@@ -91,6 +98,7 @@
       }
     },
     "sqlGeneration": {
+      "INVALID_TYPED_VALUE": "Invalid value for SQL generation in {{tableName}}. CSV column: {{columnOriginal}}, SQL column: {{columnSqlName}}, expected type: {{expectedType}}, received value: {{rawValue}}.",
       "UNEXPECTED_GENERATION_ERROR": "Failed to generate SQL.",
       "WORKER_RUNTIME_ERROR": "SQL generation failed while running in the background.",
       "WORKER_INVALID_RESPONSE": "SQL generation returned an invalid response.",

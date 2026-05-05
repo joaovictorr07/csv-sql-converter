@@ -2,12 +2,16 @@ import { Injectable } from '@angular/core';
 import {
   SqlGenerationFailure,
   SqlGenerationErrorCode,
+  InvalidTypedValueFailureDetails,
   SqlGenerationRequest,
   SqlGenerationResponse
 } from '../types/sql-generation';
 
 export class SqlGenerationError extends Error {
-  constructor(public readonly code: SqlGenerationErrorCode) {
+  constructor(
+    public readonly code: SqlGenerationErrorCode,
+    public readonly details?: InvalidTypedValueFailureDetails
+  ) {
     super(code);
   }
 }
@@ -35,7 +39,7 @@ export class SqlGenerationService {
         }
 
         const failure = data as SqlGenerationFailure;
-        reject(new SqlGenerationError(failure.errorCode));
+        reject(new SqlGenerationError(failure.errorCode, failure.details));
       };
 
       worker.onerror = (event) => {

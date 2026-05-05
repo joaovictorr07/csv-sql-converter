@@ -1,8 +1,10 @@
 import { TableConfig } from '../models/table-config';
+import { ColumnMapping } from '../models/column-mapping';
 import { BooleanMode } from '../types/boolean-mode';
 import { translate } from '../i18n/catalog';
 import { Locale } from '../types/locale';
 import { SqlOperation } from '../types/sql-operation';
+import { InvalidTypedValueError } from './sql-generation-errors';
 
 export function buildSql(tables: TableConfig[], operation: SqlOperation, locale: Locale): string {
   const selectedTables = tables.filter((table) => table.selected);
@@ -48,26 +50,70 @@ function sortTablesByDependency(tables: TableConfig[], reverse: boolean): TableC
   return reverse ? sorted.reverse() : sorted;
 }
 
-function escapeSql(val: unknown, boolMode: BooleanMode): string {
-  if (val === null || val === undefined || val === 'null' || val === '') return 'NULL';
+function formatSqlValue(table: TableConfig, mapping: ColumnMapping, value: unknown): string {
+  if (value === null || value === undefined || value === 'null' || value === '') return 'NULL';
 
-  const strVal = String(val).trim();
+  const rawValue = String(value);
+  const trimmedValue = rawValue.trim();
 
-  if (strVal === '0') {
-    if (boolMode === 'TRUE_FALSE') return 'FALSE';
-    if (boolMode === 'BIT') return '0';
-    if (boolMode === 'STRING') return "'0'";
+  switch (mapping.valueType) {
+    case 'string':
+      return `'${rawValue.replace(/'/g, "''")}'`;
+    case 'int':
+      if (/^[+-]?\d+$/.test(trimmedValue)) return trimmedValue;
+      throwInvalidTypedValue(table, mapping, rawValue);
+    case 'decimal': {
+      if (/^[+-]?\d+(?:[,.]\d+)?$/.test(trimmedValue)) {
+        return trimmedValue.replace(',', '.');
+      }
+
+      throwInvalidTypedValue(table, mapping, rawValue);
+    }
+    case 'bool':
+      return formatBooleanValue(trimmedValue, table.booleanMode, table, mapping, rawValue);
+    default:
+      return `'${rawValue.replace(/'/g, "''")}'`;
+  }
+}
+
+function formatBooleanValue(
+  trimmedValue: string,
+  boolMode: BooleanMode,
+  table: TableConfig,
+  mapping: ColumnMapping,
+  rawValue: string
+): string {
+  const normalized = trimmedValue.toLowerCase();
+
+  if (normalized === '1' || normalized === 'v' || normalized === 'true') {
+    return renderBoolean(true, boolMode);
   }
 
-  if (strVal === '1') {
-    if (boolMode === 'TRUE_FALSE') return 'TRUE';
-    if (boolMode === 'BIT') return '1';
-    if (boolMode === 'STRING') return "'1'";
+  if (normalized === '0' || normalized === 'f' || normalized === 'false') {
+    return renderBoolean(false, boolMode);
   }
 
-  if (!isNaN(Number(val))) return String(val);
+  throwInvalidTypedValue(table, mapping, rawValue);
+}
 
-  return `'${String(val).replace(/'/g, "''")}'`;
+function renderBoolean(value: boolean, boolMode: BooleanMode): string {
+  if (boolMode === 'TRUE_FALSE') return value ? 'TRUE' : 'FALSE';
+  if (boolMode === 'STRING') return value ? "'1'" : "'0'";
+  return value ? '1' : '0';
+}
+
+function throwInvalidTypedValue(table: TableConfig, mapping: ColumnMapping, rawValue: string): never {
+  throw new InvalidTypedValueError({
+    tableName: table.sqlTableName,
+    columnOriginal: mapping.original,
+    columnSqlName: mapping.sqlName,
+    expectedType: mapping.valueType,
+    rawValue
+  });
+}
+
+function findMappingByOriginal(mappings: ColumnMapping[], original: string): ColumnMapping | undefined {
+  return mappings.find((mapping) => mapping.original === original);
 }
 
 function generateSingleTable(table: TableConfig, operation: SqlOperation, locale: Locale): string {
@@ -83,7 +129,7 @@ function generateSingleTable(table: TableConfig, operation: SqlOperation, locale
     if (operation === 'INSERT') {
       const cols = mappings.map((mapping) => mapping.sqlName).join(', ');
       const vals = mappings
-        .map((mapping) => escapeSql(row[mapping.original], table.booleanMode))
+        .map((mapping) => formatSqlValue(table, mapping, row[mapping.original]))
         .join(', ');
       output += `INSERT INTO ${tableName} (${cols}) VALUES (${vals});\n`;
       return;
@@ -101,10 +147,10 @@ function generateSingleTable(table: TableConfig, operation: SqlOperation, locale
         return;
       }
 
-      const pkVal = escapeSql(row[table.primaryKey], table.booleanMode);
+      const pkVal = formatSqlValue(table, pkMapping, row[table.primaryKey]);
       const updates = mappings
         .filter((mapping) => mapping.original !== table.primaryKey)
-        .map((mapping) => `${mapping.sqlName} = ${escapeSql(row[mapping.original], table.booleanMode)}`)
+        .map((mapping) => `${mapping.sqlName} = ${formatSqlValue(table, mapping, row[mapping.original])}`)
         .join(', ');
       output += `UPDATE ${tableName} SET ${updates} WHERE ${pkMapping.sqlName} = ${pkVal};\n`;
       return;
@@ -115,9 +161,11 @@ function generateSingleTable(table: TableConfig, operation: SqlOperation, locale
       return;
     }
 
-    const pkMapping = table.parentMappings.find((mapping) => mapping.original === table.primaryKey);
+    const pkMapping = findMappingByOriginal(table.parentMappings, table.primaryKey);
     const pkName = pkMapping ? pkMapping.sqlName : table.primaryKey;
-    const pkVal = escapeSql(row[table.primaryKey], table.booleanMode);
+    const pkVal = pkMapping
+      ? formatSqlValue(table, pkMapping, row[table.primaryKey])
+      : `'${String(row[table.primaryKey]).replace(/'/g, "''")}'`;
     output += `DELETE FROM ${tableName} WHERE ${pkName} = ${pkVal};\n`;
   });
 
@@ -155,13 +203,13 @@ function generateParentChildSameFile(
       if (operation === 'INSERT') {
         const cols = parentCols.map((mapping) => mapping.sqlName).join(', ');
         const vals = parentCols
-          .map((mapping) => escapeSql(row[mapping.original], table.booleanMode))
+          .map((mapping) => formatSqlValue(table, mapping, row[mapping.original]))
           .join(', ');
         output += `INSERT INTO ${parentTable} (${cols}) VALUES (${vals});\n`;
       } else if (operation === 'DELETE') {
-        const pkMapping = parentCols.find((mapping) => mapping.original === table.primaryKey);
+        const pkMapping = findMappingByOriginal(table.parentMappings, table.primaryKey);
         if (pkMapping) {
-          output += `DELETE FROM ${parentTable} WHERE ${pkMapping.sqlName} = ${escapeSql(currentPkValue, table.booleanMode)};\n`;
+          output += `DELETE FROM ${parentTable} WHERE ${pkMapping.sqlName} = ${formatSqlValue(table, pkMapping, currentPkValue)};\n`;
         }
       }
 
@@ -171,7 +219,7 @@ function generateParentChildSameFile(
     if (childCols.length > 0 && operation === 'INSERT') {
       const cols = childCols.map((mapping) => mapping.sqlName).join(', ');
       const vals = childCols
-        .map((mapping) => escapeSql(row[mapping.original], table.booleanMode))
+        .map((mapping) => formatSqlValue(table, mapping, row[mapping.original]))
         .join(', ');
       output += `INSERT INTO ${childTable} (${cols}) VALUES (${vals});\n`;
     }

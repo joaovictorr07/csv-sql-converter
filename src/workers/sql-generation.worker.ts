@@ -2,6 +2,7 @@
 
 import { buildSql } from '../utils/sql-generation';
 import { SqlGenerationRequest, SqlGenerationResponse } from '../types/sql-generation';
+import { InvalidTypedValueError } from '../utils/sql-generation-errors';
 
 addEventListener('message', ({ data }: MessageEvent<SqlGenerationRequest>) => {
   let response: SqlGenerationResponse;
@@ -13,6 +14,17 @@ addEventListener('message', ({ data }: MessageEvent<SqlGenerationRequest>) => {
     };
   } catch (error) {
     console.error(error);
+
+    if (error instanceof InvalidTypedValueError) {
+      response = {
+        ok: false,
+        errorCode: 'INVALID_TYPED_VALUE',
+        details: error.details
+      };
+      postMessage(response);
+      return;
+    }
+
     response = {
       ok: false,
       errorCode: 'WORKER_EXECUTION_ERROR'
