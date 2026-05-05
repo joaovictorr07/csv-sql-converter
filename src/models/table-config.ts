@@ -7,6 +7,18 @@ export interface AutoIncrementIdConfig {
   startAt: number;
 }
 
+export type RelationshipTargetMode = 'auto-increment' | 'selected-pk';
+
+export interface ForeignKeySqlColumnConfig {
+  parentColumn: string;
+  fkColumnName: string;
+}
+
+export interface ExternalRelationshipSourceMapping {
+  parentColumn: string;
+  childColumn: string | null;
+}
+
 export interface TableConfig {
   id: string;
   name: string; // File name (display only)
@@ -28,9 +40,14 @@ export interface TableConfig {
   hasChildInSameFile: boolean;
   childSqlTableName: string;
   childMappings: ColumnMapping[];
+  relationshipTargetMode: RelationshipTargetMode;
+  sameFileForeignKeyColumnName: string;
+  sameFileSelectedPkForeignKeys: ForeignKeySqlColumnConfig[];
   
   // Multi-File Parent/Child Mode (Only used if hasChildInSameFile is false)
   externalParentTableId: string | null;
-  externalForeignKey: string | null; // The column in THIS table that points to the external parent
+  externalRelationshipSourceMappings: ExternalRelationshipSourceMapping[];
+  externalForeignKeyColumnName: string;
+  externalSelectedPkForeignKeys: ForeignKeySqlColumnConfig[];
   autoIncrementId: AutoIncrementIdConfig;
 }

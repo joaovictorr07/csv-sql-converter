@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
 import {
+  RelationshipFailureDetails,
   SqlGenerationFailure,
   SqlGenerationErrorCode,
   InvalidTypedValueFailureDetails,
@@ -7,10 +8,12 @@ import {
   SqlGenerationResponse
 } from '../types/sql-generation';
 
+export type RelationshipGenerationErrorDetails = RelationshipFailureDetails;
+
 export class SqlGenerationError extends Error {
   constructor(
     public readonly code: SqlGenerationErrorCode,
-    public readonly details?: InvalidTypedValueFailureDetails
+    public readonly details?: InvalidTypedValueFailureDetails | RelationshipGenerationErrorDetails
   ) {
     super(code);
   }

@@ -2,7 +2,7 @@
 
 import { buildSql } from '../utils/sql-generation';
 import { SqlGenerationRequest, SqlGenerationResponse } from '../types/sql-generation';
-import { InvalidTypedValueError } from '../utils/sql-generation-errors';
+import { InvalidTypedValueError, RelationshipSqlGenerationError } from '../utils/sql-generation-errors';
 
 addEventListener('message', ({ data }: MessageEvent<SqlGenerationRequest>) => {
   let response: SqlGenerationResponse;
@@ -19,6 +19,16 @@ addEventListener('message', ({ data }: MessageEvent<SqlGenerationRequest>) => {
       response = {
         ok: false,
         errorCode: 'INVALID_TYPED_VALUE',
+        details: error.details
+      };
+      postMessage(response);
+      return;
+    }
+
+    if (error instanceof RelationshipSqlGenerationError) {
+      response = {
+        ok: false,
+        errorCode: error.code,
         details: error.details
       };
       postMessage(response);

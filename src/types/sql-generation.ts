@@ -16,6 +16,12 @@ export interface SqlGenerationSuccess {
 
 export type SqlGenerationErrorCode =
   | 'INVALID_TYPED_VALUE'
+  | 'RELATIONSHIP_PARENT_PK_REQUIRED'
+  | 'RELATIONSHIP_AUTO_INCREMENT_REQUIRED'
+  | 'RELATIONSHIP_EXTERNAL_PARENT_NOT_FOUND'
+  | 'RELATIONSHIP_MAPPING_INCOMPLETE'
+  | 'RELATIONSHIP_ROW_KEY_INCOMPLETE'
+  | 'RELATIONSHIP_PARENT_ROW_NOT_FOUND'
   | 'UNEXPECTED_GENERATION_ERROR'
   | 'WORKER_RUNTIME_ERROR'
   | 'WORKER_INVALID_RESPONSE'
@@ -29,10 +35,17 @@ export interface InvalidTypedValueFailureDetails {
   rawValue: string;
 }
 
+export interface RelationshipFailureDetails {
+  childTableName: string;
+  parentTableName: string;
+  fkColumnName?: string;
+  logicalKey?: string;
+}
+
 export interface SqlGenerationFailure {
   ok: false;
   errorCode: SqlGenerationErrorCode;
-  details?: InvalidTypedValueFailureDetails;
+  details?: InvalidTypedValueFailureDetails | RelationshipFailureDetails;
 }
 
 export type SqlGenerationResponse = SqlGenerationSuccess | SqlGenerationFailure;
