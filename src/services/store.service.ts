@@ -1,6 +1,6 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { ColumnMapping } from '../models/column-mapping';
-import { TableConfig } from '../models/table-config';
+import { AutoIncrementIdConfig, TableConfig } from '../models/table-config';
 import { SqlOperation } from '../types/sql-operation';
 import { decodeCsvFile } from '../utils/csv-text-decoder';
 import { normalizeSqlIdentifier } from '../utils/sql-identifiers';
@@ -60,6 +60,22 @@ export class StoreService {
 
   updateChildSqlTableName(id: string, value: string) {
     this.updateTable(id, { childSqlTableName: value });
+  }
+
+  updateAutoIncrementId(id: string, changes: Partial<AutoIncrementIdConfig>) {
+    this.tables.update((current) =>
+      current.map((table) => {
+        if (table.id !== id) return table;
+
+        return {
+          ...table,
+          autoIncrementId: {
+            ...table.autoIncrementId,
+            ...changes
+          }
+        };
+      })
+    );
   }
 
   updatePrimaryKeyColumns(id: string, columns: string[]) {
@@ -242,7 +258,12 @@ export class StoreService {
       childSqlTableName: normalizeSqlIdentifier(`${cleanName}_child`),
       childMappings: headers.map((header) => this.createColumnMapping(header, false)),
       externalParentTableId: null,
-      externalForeignKey: null
+      externalForeignKey: null,
+      autoIncrementId: {
+        enabled: false,
+        columnName: 'id',
+        startAt: 1
+      }
     };
 
     this.tables.update((current) => [...current, newTable]);
@@ -409,6 +430,11 @@ export class StoreService {
         producedTableNames.add(normalizedIdentifier);
       }
 
+      const autoIncrementIdError = this.validateAutoIncrementId(table);
+      if (autoIncrementIdError) {
+        return autoIncrementIdError;
+      }
+
       const parentColumnsError = this.validateMappingIdentifiers(table, 'parent');
       if (parentColumnsError) {
         return parentColumnsError;
@@ -445,11 +471,35 @@ export class StoreService {
       seen.add(normalizedIdentifier);
     }
 
+    if (scope === 'parent' && table.autoIncrementId.enabled) {
+      const normalizedIdentifier = normalizeSqlIdentifier(table.autoIncrementId.columnName);
+      if (seen.has(normalizedIdentifier)) {
+        return this.buildDuplicateIdentifierError(
+          normalizedIdentifier,
+          this.i18n.t('errors.validation.contexts.autoIncrementId', { fileName: table.name })
+        );
+      }
+    }
+
     return null;
   }
 
   private buildDuplicateIdentifierError(identifier: string, context: string): string {
     return this.i18n.t('errors.validation.DUPLICATE_SQL_IDENTIFIER', { identifier, context });
+  }
+
+  private validateAutoIncrementId(table: TableConfig): string | null {
+    if (!table.autoIncrementId.enabled) return null;
+
+    if (!table.autoIncrementId.columnName.trim()) {
+      return this.i18n.t('errors.validation.AUTO_INCREMENT_ID_COLUMN_REQUIRED', { fileName: table.name });
+    }
+
+    if (!Number.isInteger(table.autoIncrementId.startAt)) {
+      return this.i18n.t('errors.validation.AUTO_INCREMENT_ID_START_AT_INVALID', { fileName: table.name });
+    }
+
+    return null;
   }
 
   private buildGenerationErrorMessage(error: unknown): string {

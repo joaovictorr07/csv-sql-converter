@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ColumnMapping } from '../models/column-mapping';
-import { TableConfig } from '../models/table-config';
+import { AutoIncrementIdConfig, TableConfig } from '../models/table-config';
 import { I18nService } from '../services/i18n.service';
 import { StoreService } from '../services/store.service';
 import { BooleanMode } from '../types/boolean-mode';
@@ -98,6 +98,51 @@ import { ColumnValueType } from '../types/column-value-type';
                 </label>
               }
             </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mb-4 rounded border border-slate-700/50 bg-slate-900/50 p-3">
+        <div class="mb-3 flex items-center justify-between gap-3">
+          <div>
+            <h4 class="text-xs font-semibold uppercase tracking-wider text-slate-400">
+              {{ i18n.t('tableConfig.autoIncrementId.title') }}
+            </h4>
+            <p class="mt-1 text-[10px] text-slate-500">{{ i18n.t('tableConfig.autoIncrementId.hint') }}</p>
+          </div>
+          <label class="flex cursor-pointer items-center gap-2 text-sm text-slate-200">
+            <input
+              type="checkbox"
+              [checked]="config().autoIncrementId.enabled"
+              (change)="updateAutoIncrementEnabled($event)"
+              class="rounded border-slate-600 bg-slate-800 text-blue-500"
+            >
+            <span>{{ i18n.t('tableConfig.autoIncrementId.enabled') }}</span>
+          </label>
+        </div>
+
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div>
+            <label class="mb-1 block text-xs text-slate-400">{{ i18n.t('tableConfig.autoIncrementId.columnName') }}</label>
+            <input
+              type="text"
+              [ngModel]="config().autoIncrementId.columnName"
+              (ngModelChange)="updateAutoIncrementColumnName($event)"
+              [disabled]="!config().autoIncrementId.enabled"
+              class="w-full rounded border border-slate-600 bg-slate-900 px-2 py-2 text-sm text-slate-200 outline-none focus:border-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+          </div>
+
+          <div>
+            <label class="mb-1 block text-xs text-slate-400">{{ i18n.t('tableConfig.autoIncrementId.startAt') }}</label>
+            <input
+              type="number"
+              step="1"
+              [ngModel]="config().autoIncrementId.startAt"
+              (change)="updateAutoIncrementStartAt($event)"
+              [disabled]="!config().autoIncrementId.enabled"
+              class="w-full rounded border border-slate-600 bg-slate-900 px-2 py-2 text-sm text-slate-200 outline-none focus:border-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+            >
           </div>
         </div>
       </div>
@@ -313,6 +358,21 @@ export class TableConfigComponent {
     this.store.updateSqlTableName(this.config().id, value);
   }
 
+  updateAutoIncrementEnabled(event: Event) {
+    this.updateAutoIncrementId({
+      enabled: (event.target as HTMLInputElement).checked
+    });
+  }
+
+  updateAutoIncrementColumnName(value: string) {
+    this.updateAutoIncrementId({ columnName: value });
+  }
+
+  updateAutoIncrementStartAt(event: Event) {
+    const rawValue = (event.target as HTMLInputElement).value;
+    this.updateAutoIncrementId({ startAt: rawValue === '' ? Number.NaN : Number(rawValue) });
+  }
+
   togglePk(column: string, checked: boolean) {
     const current = this.config().primaryKeyColumns;
     const next = checked ? [...current, column] : current.filter((entry) => entry !== column);
@@ -369,5 +429,9 @@ export class TableConfigComponent {
 
   countIncluded(mappings: ColumnMapping[]) {
     return mappings.filter((mapping) => mapping.include).length;
+  }
+
+  private updateAutoIncrementId(changes: Partial<AutoIncrementIdConfig>) {
+    this.store.updateAutoIncrementId(this.config().id, changes);
   }
 }

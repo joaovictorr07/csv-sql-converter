@@ -52,6 +52,13 @@
     "primaryKeyGrouping": "Primary Keys (Grouping Key)",
     "primaryKeyPk": "Primary Keys (PK)",
     "primaryKeyHint": "Select one or more columns to compose the primary key.",
+    "autoIncrementId": {
+      "title": "Auto Increment ID",
+      "hint": "Generates an incremental identifier in INSERT statements for the main/parent table.",
+      "enabled": "Enable auto ID",
+      "columnName": "ID column name",
+      "startAt": "Start counter at"
+    },
     "parentColumnMapping": "Column Mapping (Parent)",
     "childColumnMapping": "Column Mapping (Child)",
     "columnMappingSelected": "{{count}} selected",
@@ -90,11 +97,14 @@
     },
     "validation": {
       "DUPLICATE_SQL_IDENTIFIER": "Duplicate SQL identifier: {{identifier}} ({{context}}).",
+      "AUTO_INCREMENT_ID_COLUMN_REQUIRED": "The auto ID column name is required for {{fileName}}.",
+      "AUTO_INCREMENT_ID_START_AT_INVALID": "The auto ID start value must be an integer for {{fileName}}.",
       "contexts": {
         "parentTable": "table name for {{fileName}}",
         "childTable": "child table name for {{fileName}}",
         "parentColumns": "parent column mappings for {{fileName}}",
-        "childColumns": "child column mappings for {{fileName}}"
+        "childColumns": "child column mappings for {{fileName}}",
+        "autoIncrementId": "auto ID column for {{fileName}}"
       }
     },
     "sqlGeneration": {

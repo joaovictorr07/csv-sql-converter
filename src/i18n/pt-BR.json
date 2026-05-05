@@ -52,6 +52,13 @@
     "primaryKeyGrouping": "Chaves prim\u00e1rias (chave de agrupamento)",
     "primaryKeyPk": "Chaves prim\u00e1rias (PK)",
     "primaryKeyHint": "Selecione uma ou mais colunas para compor a chave prim\u00e1ria.",
+    "autoIncrementId": {
+      "title": "ID autom\u00e1tico",
+      "hint": "Gera um identificador incremental no INSERT da tabela pai/principal.",
+      "enabled": "Habilitar ID autom\u00e1tico",
+      "columnName": "Nome da coluna de ID",
+      "startAt": "Iniciar contador em"
+    },
     "parentColumnMapping": "Mapeamento de colunas (pai)",
     "childColumnMapping": "Mapeamento de colunas (filho)",
     "columnMappingSelected": "{{count}} selecionadas",
@@ -90,11 +97,14 @@
     },
     "validation": {
       "DUPLICATE_SQL_IDENTIFIER": "Identificador SQL duplicado: {{identifier}} ({{context}}).",
+      "AUTO_INCREMENT_ID_COLUMN_REQUIRED": "O nome da coluna de ID autom\u00e1tico \u00e9 obrigat\u00f3rio em {{fileName}}.",
+      "AUTO_INCREMENT_ID_START_AT_INVALID": "O valor inicial do ID autom\u00e1tico deve ser um n\u00famero inteiro em {{fileName}}.",
       "contexts": {
         "parentTable": "nome da tabela de {{fileName}}",
         "childTable": "nome da tabela filha de {{fileName}}",
         "parentColumns": "mapeamento de colunas pai de {{fileName}}",
-        "childColumns": "mapeamento de colunas filha de {{fileName}}"
+        "childColumns": "mapeamento de colunas filha de {{fileName}}",
+        "autoIncrementId": "coluna de ID autom\u00e1tico de {{fileName}}"
       }
     },
     "sqlGeneration": {

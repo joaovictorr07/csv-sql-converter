@@ -1,5 +1,12 @@
 import { BooleanMode } from '../types/boolean-mode';
 import { ColumnMapping } from './column-mapping';
+
+export interface AutoIncrementIdConfig {
+  enabled: boolean;
+  columnName: string;
+  startAt: number;
+}
+
 export interface TableConfig {
   id: string;
   name: string; // File name (display only)
@@ -25,4 +32,5 @@ export interface TableConfig {
   // Multi-File Parent/Child Mode (Only used if hasChildInSameFile is false)
   externalParentTableId: string | null;
   externalForeignKey: string | null; // The column in THIS table that points to the external parent
+  autoIncrementId: AutoIncrementIdConfig;
 }

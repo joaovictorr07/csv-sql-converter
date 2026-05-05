@@ -5,6 +5,12 @@ import { translate } from '../i18n/catalog';
 import { Locale } from '../types/locale';
 import { SqlOperation } from '../types/sql-operation';
 import { InvalidTypedValueError } from './sql-generation-errors';
+import { normalizeSqlIdentifier } from './sql-identifiers';
+
+interface ResolvedAutoIncrementIdConfig {
+  columnName: string;
+  startAt: number;
+}
 
 export function buildSql(tables: TableConfig[], operation: SqlOperation, locale: Locale): string {
   const selectedTables = tables.filter((table) => table.selected);
@@ -143,10 +149,43 @@ function buildCompositeKey(table: TableConfig, pkMappings: ColumnMapping[], row:
   return JSON.stringify(parts);
 }
 
+function resolveAutoIncrementIdConfig(table: TableConfig): ResolvedAutoIncrementIdConfig | null {
+  if (!table.autoIncrementId.enabled) return null;
+
+  return {
+    columnName: normalizeSqlIdentifier(table.autoIncrementId.columnName),
+    startAt: table.autoIncrementId.startAt
+  };
+}
+
+function buildInsertColumns(mappings: ColumnMapping[], autoIncrementId?: ResolvedAutoIncrementIdConfig | null): string {
+  const columns = mappings.map((mapping) => mapping.sqlName);
+  if (autoIncrementId) {
+    columns.unshift(autoIncrementId.columnName);
+  }
+
+  return columns.join(', ');
+}
+
+function buildInsertValues(
+  table: TableConfig,
+  mappings: ColumnMapping[],
+  row: Record<string, unknown>,
+  autoIncrementIdValue?: number
+): string {
+  const values = mappings.map((mapping) => formatSqlValue(table, mapping, row[mapping.original]));
+  if (autoIncrementIdValue !== undefined) {
+    values.unshift(String(autoIncrementIdValue));
+  }
+
+  return values.join(', ');
+}
+
 function generateSingleTable(table: TableConfig, operation: SqlOperation, locale: Locale): string {
   let output = '';
   const tableName = table.sqlTableName;
   const mappings = table.parentMappings.filter((mapping) => mapping.include);
+  const autoIncrementId = resolveAutoIncrementIdConfig(table);
 
   if (mappings.length === 0) {
     return `-- ${translate(locale, 'sql.noColumnsSelected', { tableName })}`;
@@ -190,13 +229,14 @@ function generateSingleTable(table: TableConfig, operation: SqlOperation, locale
     return output;
   }
 
+  const insertColumns = buildInsertColumns(mappings, autoIncrementId);
+  let nextAutoIncrementId = autoIncrementId?.startAt ?? 0;
+
   table.data.forEach((row) => {
     if (operation === 'INSERT') {
-      const cols = mappings.map((mapping) => mapping.sqlName).join(', ');
-      const vals = mappings
-        .map((mapping) => formatSqlValue(table, mapping, row[mapping.original]))
-        .join(', ');
-      output += `INSERT INTO ${tableName} (${cols}) VALUES (${vals});\n`;
+      const autoIncrementIdValue = autoIncrementId ? nextAutoIncrementId++ : undefined;
+      const vals = buildInsertValues(table, mappings, row, autoIncrementIdValue);
+      output += `INSERT INTO ${tableName} (${insertColumns}) VALUES (${vals});\n`;
       return;
     }
   });
@@ -212,6 +252,7 @@ function generateParentChildSameFile(
   const parentCols = table.parentMappings.filter((mapping) => mapping.include);
   const childCols = table.childMappings.filter((mapping) => mapping.include);
   const pkMappings = getPrimaryKeyMappings(table, parentCols);
+  const autoIncrementId = resolveAutoIncrementIdConfig(table);
 
   if (!pkMappings) {
     return `-- ${translate(locale, 'sql.pkGroupingRequiredParentChild', { tableName: table.name })}`;
@@ -222,6 +263,11 @@ function generateParentChildSameFile(
   const childTable = table.childSqlTableName;
 
   const seenParentKeys = new Set<string>();
+  // Preserve the generated parent ID per composite key for a future FK reuse step.
+  const generatedParentIdsByCompositeKey = new Map<string, number>();
+  const parentInsertColumns = buildInsertColumns(parentCols, autoIncrementId);
+  const childInsertColumns = childCols.map((mapping) => mapping.sqlName).join(', ');
+  let nextAutoIncrementId = autoIncrementId?.startAt ?? 0;
 
   table.data.forEach((row) => {
     const compositeKey = buildCompositeKey(table, pkMappings, row);
@@ -230,11 +276,13 @@ function generateParentChildSameFile(
       seenParentKeys.add(compositeKey);
 
       if (operation === 'INSERT') {
-        const cols = parentCols.map((mapping) => mapping.sqlName).join(', ');
-        const vals = parentCols
-          .map((mapping) => formatSqlValue(table, mapping, row[mapping.original]))
-          .join(', ');
-        output += `INSERT INTO ${parentTable} (${cols}) VALUES (${vals});\n`;
+        const autoIncrementIdValue = autoIncrementId ? nextAutoIncrementId++ : undefined;
+        if (autoIncrementIdValue !== undefined) {
+          generatedParentIdsByCompositeKey.set(compositeKey, autoIncrementIdValue);
+        }
+
+        const vals = buildInsertValues(table, parentCols, row, autoIncrementIdValue);
+        output += `INSERT INTO ${parentTable} (${parentInsertColumns}) VALUES (${vals});\n`;
       } else if (operation === 'DELETE') {
         const whereClause = buildPrimaryKeyWhereClause(table, pkMappings, row);
         output += `DELETE FROM ${parentTable} WHERE ${whereClause};\n`;
@@ -242,11 +290,8 @@ function generateParentChildSameFile(
     }
 
     if (childCols.length > 0 && operation === 'INSERT') {
-      const cols = childCols.map((mapping) => mapping.sqlName).join(', ');
-      const vals = childCols
-        .map((mapping) => formatSqlValue(table, mapping, row[mapping.original]))
-        .join(', ');
-      output += `INSERT INTO ${childTable} (${cols}) VALUES (${vals});\n`;
+      const vals = buildInsertValues(table, childCols, row);
+      output += `INSERT INTO ${childTable} (${childInsertColumns}) VALUES (${vals});\n`;
     }
   });
 
