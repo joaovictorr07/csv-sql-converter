@@ -1,0 +1,99 @@
+{
+  "meta": {
+    "title": "Conversor de CSV para SQL"
+  },
+  "header": {
+    "title": "Conversor de CSV para SQL",
+    "subtitle": "Transforme dados CSV em scripts SQL relacionais com facilidade.",
+    "languageLabel": "Idioma"
+  },
+  "languages": {
+    "pt-BR": "Português (Brasil)",
+    "en": "English"
+  },
+  "steps": {
+    "importData": "Importar dados",
+    "configureTables": "Configurar tabelas e relacionamentos",
+    "generate": "Gerar"
+  },
+  "generation": {
+    "sqlOperation": "Operação SQL",
+    "primaryKeyNote": "Observação: UPDATE e DELETE exigem uma chave primária válida selecionada para cada tabela.",
+    "generateSql": "Gerar SQL",
+    "generating": "Gerando...",
+    "copy": "Copiar",
+    "copied": "Copiado!"
+  },
+  "upload": {
+    "prompt": "Solte arquivos CSV aqui ou clique para fazer upload",
+    "support": "Suporta múltiplos arquivos"
+  },
+  "tableConfig": {
+    "remove": "Remover",
+    "rows": "{{count}} linhas",
+    "columns": "{{count}} colunas",
+    "parsingSettings": "Configurações de parsing e valores do CSV",
+    "delimiter": "Delimitador",
+    "delimiterReparseHint": "Alterar isso reprocessa o arquivo.",
+    "delimiters": {
+      "comma": "Vírgula (,)",
+      "semicolon": "Ponto e vírgula (;)",
+      "pipe": "Pipe (|)",
+      "tab": "Tabulação (\\t)"
+    },
+    "booleanHandling": "Tratamento de booleano (0/1)",
+    "booleanOptions": {
+      "AS_IS": "Como está (0 ou 1)",
+      "TRUE_FALSE": "Booleano SQL (FALSE/TRUE)",
+      "BIT": "Numérico (0/1)",
+      "STRING": "Texto ('0'/'1')"
+    },
+    "sqlTableName": "Nome da tabela SQL",
+    "primaryKeyGrouping": "Chave primária (chave de agrupamento)",
+    "primaryKeyPk": "Chave primária (PK)",
+    "selectColumn": "-- Selecionar coluna --",
+    "parentColumnMapping": "Mapeamento de colunas (pai)",
+    "childColumnMapping": "Mapeamento de colunas (filho)",
+    "columnMappingSelected": "{{count}} selecionadas",
+    "include": "Inc.",
+    "csvHeader": "Cabeçalho CSV",
+    "sqlColumn": "Coluna SQL",
+    "hasChildInSameFile": "Tem tabela filha no mesmo arquivo?",
+    "childTableSettings": "Configurações da tabela filha",
+    "childSqlTableName": "Nome da tabela SQL filha",
+    "parentTableDifferentFile": "Tabela pai (arquivo diferente)",
+    "noExternalParent": "-- Sem pai externo --",
+    "foreignKeyThisFile": "Chave estrangeira (neste arquivo)",
+    "selectForeignKey": "-- Selecionar FK --"
+  },
+  "operations": {
+    "INSERT": "Inserir",
+    "UPDATE": "Atualizar",
+    "DELETE": "Excluir"
+  },
+  "loading": {
+    "sqlGeneration": {
+      "title": "Gerando SQL",
+      "message": "Processando os dados CSV em segundo plano."
+    }
+  },
+  "errors": {
+    "sqlGeneration": {
+      "UNEXPECTED_GENERATION_ERROR": "Falha ao gerar o SQL.",
+      "WORKER_RUNTIME_ERROR": "A geração de SQL falhou durante a execução em segundo plano.",
+      "WORKER_INVALID_RESPONSE": "A geração de SQL retornou uma resposta inválida.",
+      "WORKER_EXECUTION_ERROR": "O worker de geração de SQL encontrou um erro inesperado."
+    }
+  },
+  "sql": {
+    "generatedScript": "Script SQL gerado",
+    "operationLabel": "Operação",
+    "dateLabel": "Data",
+    "sourceFileLabel": "Arquivo de origem",
+    "noColumnsSelected": "Nenhuma coluna selecionada para {{tableName}}",
+    "pkRequiredUpdate": "Erro: PK obrigatória para UPDATE",
+    "pkColumnNotIncluded": "Erro: coluna PK não incluída no mapeamento",
+    "pkRequiredDelete": "Erro: PK obrigatória para DELETE",
+    "pkGroupingRequiredParentChild": "Erro: chave primária (chave de agrupamento) obrigatória para geração pai-filho em {{tableName}}"
+  }
+}

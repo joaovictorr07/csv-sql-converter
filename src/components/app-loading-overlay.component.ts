@@ -1,4 +1,5 @@
 import { Component, inject } from '@angular/core';
+import { I18nService } from '../services/i18n.service';
 import { LoadingService } from '../services/loading.service';
 
 @Component({
@@ -19,8 +20,8 @@ import { LoadingService } from '../services/loading.service';
               aria-hidden="true"
             ></div>
             <div class="min-w-0">
-              <p class="text-sm font-semibold text-white">{{ loading.state().title }}</p>
-              <p class="mt-1 text-sm text-slate-400">{{ loading.state().message }}</p>
+              <p class="text-sm font-semibold text-white">{{ i18n.t(loading.state().titleKey) }}</p>
+              <p class="mt-1 text-sm text-slate-400">{{ i18n.t(loading.state().messageKey) }}</p>
             </div>
           </div>
         </div>
@@ -29,5 +30,6 @@ import { LoadingService } from '../services/loading.service';
   `
 })
 export class AppLoadingOverlayComponent {
+  i18n = inject(I18nService);
   loading = inject(LoadingService);
 }

@@ -8,8 +8,8 @@ export class LoadingService {
   state = signal<LoadingState>({
     active: false,
     context: null,
-    title: '',
-    message: ''
+    titleKey: '',
+    messageKey: ''
   });
 
   show(config: LoadingConfig) {
@@ -24,8 +24,8 @@ export class LoadingService {
       ...current,
       active: false,
       context: null,
-      title: '',
-      message: ''
+      titleKey: '',
+      messageKey: ''
     }));
   }
 

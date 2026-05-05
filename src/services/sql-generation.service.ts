@@ -1,5 +1,16 @@
 import { Injectable } from '@angular/core';
-import { SqlGenerationRequest, SqlGenerationResponse } from '../types/sql-generation';
+import {
+  SqlGenerationFailure,
+  SqlGenerationErrorCode,
+  SqlGenerationRequest,
+  SqlGenerationResponse
+} from '../types/sql-generation';
+
+export class SqlGenerationError extends Error {
+  constructor(public readonly code: SqlGenerationErrorCode) {
+    super(code);
+  }
+}
 
 @Injectable({
   providedIn: 'root'
@@ -23,17 +34,19 @@ export class SqlGenerationService {
           return;
         }
 
-        reject(new Error('error' in data ? data.error : 'SQL generation worker failed.'));
+        const failure = data as SqlGenerationFailure;
+        reject(new SqlGenerationError(failure.errorCode));
       };
 
       worker.onerror = (event) => {
         cleanup();
-        reject(new Error(event.message || 'SQL generation worker failed.'));
+        console.error(event.message);
+        reject(new SqlGenerationError('WORKER_RUNTIME_ERROR'));
       };
 
       worker.onmessageerror = () => {
         cleanup();
-        reject(new Error('SQL generation worker returned an invalid response.'));
+        reject(new SqlGenerationError('WORKER_INVALID_RESPONSE'));
       };
 
       worker.postMessage(request);

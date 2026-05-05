@@ -1,0 +1,99 @@
+{
+  "meta": {
+    "title": "CSV to SQL Converter"
+  },
+  "header": {
+    "title": "CSV to SQL Converter",
+    "subtitle": "Transform CSV data into relational SQL scripts with ease.",
+    "languageLabel": "Language"
+  },
+  "languages": {
+    "pt-BR": "Portuguese (Brazil)",
+    "en": "English"
+  },
+  "steps": {
+    "importData": "Import Data",
+    "configureTables": "Configure Tables & Relationships",
+    "generate": "Generate"
+  },
+  "generation": {
+    "sqlOperation": "SQL Operation",
+    "primaryKeyNote": "Note: UPDATE and DELETE require a valid Primary Key to be selected for each table.",
+    "generateSql": "Generate SQL",
+    "generating": "Generating...",
+    "copy": "Copy",
+    "copied": "Copied!"
+  },
+  "upload": {
+    "prompt": "Drop CSV files here or click to upload",
+    "support": "Supports multiple files"
+  },
+  "tableConfig": {
+    "remove": "Remove",
+    "rows": "{{count}} rows",
+    "columns": "{{count}} columns",
+    "parsingSettings": "CSV Parsing & Value Settings",
+    "delimiter": "Delimiter",
+    "delimiterReparseHint": "Changing this re-parses the file.",
+    "delimiters": {
+      "comma": "Comma (,)",
+      "semicolon": "Semicolon (;)",
+      "pipe": "Pipe (|)",
+      "tab": "Tab (\\t)"
+    },
+    "booleanHandling": "Boolean (0/1) Handling",
+    "booleanOptions": {
+      "AS_IS": "As Is (0 or 1)",
+      "TRUE_FALSE": "SQL Boolean (FALSE/TRUE)",
+      "BIT": "Numeric (0/1)",
+      "STRING": "String ('0'/'1')"
+    },
+    "sqlTableName": "SQL Table Name",
+    "primaryKeyGrouping": "Primary Key (Grouping Key)",
+    "primaryKeyPk": "Primary Key (PK)",
+    "selectColumn": "-- Select Column --",
+    "parentColumnMapping": "Column Mapping (Parent)",
+    "childColumnMapping": "Column Mapping (Child)",
+    "columnMappingSelected": "{{count}} selected",
+    "include": "Inc.",
+    "csvHeader": "CSV Header",
+    "sqlColumn": "SQL Column",
+    "hasChildInSameFile": "Has Child Table in Same File?",
+    "childTableSettings": "Child Table Settings",
+    "childSqlTableName": "Child SQL Table Name",
+    "parentTableDifferentFile": "Parent Table (Different File)",
+    "noExternalParent": "-- No External Parent --",
+    "foreignKeyThisFile": "Foreign Key (In this file)",
+    "selectForeignKey": "-- Select FK --"
+  },
+  "operations": {
+    "INSERT": "Insert",
+    "UPDATE": "Update",
+    "DELETE": "Delete"
+  },
+  "loading": {
+    "sqlGeneration": {
+      "title": "Generating SQL",
+      "message": "Processing CSV data in the background."
+    }
+  },
+  "errors": {
+    "sqlGeneration": {
+      "UNEXPECTED_GENERATION_ERROR": "Failed to generate SQL.",
+      "WORKER_RUNTIME_ERROR": "SQL generation failed while running in the background.",
+      "WORKER_INVALID_RESPONSE": "SQL generation returned an invalid response.",
+      "WORKER_EXECUTION_ERROR": "The SQL generation worker encountered an unexpected error."
+    }
+  },
+  "sql": {
+    "generatedScript": "Generated SQL Script",
+    "operationLabel": "Operation",
+    "dateLabel": "Date",
+    "sourceFileLabel": "Source File",
+    "noColumnsSelected": "No columns selected for {{tableName}}",
+    "pkRequiredUpdate": "Error: PK required for UPDATE",
+    "pkColumnNotIncluded": "Error: PK column not included in mapping",
+    "pkRequiredDelete": "Error: PK required for DELETE",
+    "pkGroupingRequiredParentChild": "Error: Primary Key (Grouping Key) required for Parent-Child generation in {{tableName}}"
+  }
+}

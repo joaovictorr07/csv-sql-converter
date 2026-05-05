@@ -9,12 +9,13 @@ addEventListener('message', ({ data }: MessageEvent<SqlGenerationRequest>) => {
   try {
     response = {
       ok: true,
-      sql: buildSql(data.tables, data.operation)
+      sql: buildSql(data.tables, data.operation, data.locale)
     };
   } catch (error) {
+    console.error(error);
     response = {
       ok: false,
-      error: error instanceof Error ? error.message : 'Unexpected SQL generation error.'
+      errorCode: 'WORKER_EXECUTION_ERROR'
     };
   }
 

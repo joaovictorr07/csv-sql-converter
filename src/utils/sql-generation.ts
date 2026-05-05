@@ -1,20 +1,24 @@
 import { TableConfig } from '../models/table-config';
 import { BooleanMode } from '../types/boolean-mode';
+import { translate } from '../i18n/catalog';
+import { Locale } from '../types/locale';
 import { SqlOperation } from '../types/sql-operation';
 
-export function buildSql(tables: TableConfig[], operation: SqlOperation): string {
+export function buildSql(tables: TableConfig[], operation: SqlOperation, locale: Locale): string {
   const selectedTables = tables.filter((table) => table.selected);
   const sortedTables = sortTablesByDependency(selectedTables, operation === 'DELETE');
 
-  let sql = `-- Generated SQL Script\n-- Operation: ${operation}\n-- Date: ${new Date().toISOString()}\n\n`;
+  let sql = `-- ${translate(locale, 'sql.generatedScript')}\n`;
+  sql += `-- ${translate(locale, 'sql.operationLabel')}: ${operation}\n`;
+  sql += `-- ${translate(locale, 'sql.dateLabel')}: ${new Date().toISOString()}\n\n`;
 
   sortedTables.forEach((table) => {
-    sql += `-- Source File: ${table.name}\n`;
+    sql += `-- ${translate(locale, 'sql.sourceFileLabel')}: ${table.name}\n`;
 
     if (table.hasChildInSameFile) {
-      sql += generateParentChildSameFile(table, operation);
+      sql += generateParentChildSameFile(table, operation, locale);
     } else {
-      sql += generateSingleTable(table, operation);
+      sql += generateSingleTable(table, operation, locale);
     }
 
     sql += '\n';
@@ -66,12 +70,14 @@ function escapeSql(val: unknown, boolMode: BooleanMode): string {
   return `'${String(val).replace(/'/g, "''")}'`;
 }
 
-function generateSingleTable(table: TableConfig, operation: SqlOperation): string {
+function generateSingleTable(table: TableConfig, operation: SqlOperation, locale: Locale): string {
   let output = '';
   const tableName = table.sqlTableName;
   const mappings = table.parentMappings.filter((mapping) => mapping.include);
 
-  if (mappings.length === 0) return `-- No columns selected for ${tableName}`;
+  if (mappings.length === 0) {
+    return `-- ${translate(locale, 'sql.noColumnsSelected', { tableName })}`;
+  }
 
   table.data.forEach((row) => {
     if (operation === 'INSERT') {
@@ -85,13 +91,13 @@ function generateSingleTable(table: TableConfig, operation: SqlOperation): strin
 
     if (operation === 'UPDATE') {
       if (!table.primaryKey) {
-        output += '-- Error: PK required for UPDATE\n';
+        output += `-- ${translate(locale, 'sql.pkRequiredUpdate')}\n`;
         return;
       }
 
       const pkMapping = mappings.find((mapping) => mapping.original === table.primaryKey);
       if (!pkMapping) {
-        output += '-- Error: PK column not included in mapping\n';
+        output += `-- ${translate(locale, 'sql.pkColumnNotIncluded')}\n`;
         return;
       }
 
@@ -105,7 +111,7 @@ function generateSingleTable(table: TableConfig, operation: SqlOperation): strin
     }
 
     if (!table.primaryKey) {
-      output += '-- Error: PK required for DELETE\n';
+      output += `-- ${translate(locale, 'sql.pkRequiredDelete')}\n`;
       return;
     }
 
@@ -118,9 +124,13 @@ function generateSingleTable(table: TableConfig, operation: SqlOperation): strin
   return output;
 }
 
-function generateParentChildSameFile(table: TableConfig, operation: SqlOperation): string {
+function generateParentChildSameFile(
+  table: TableConfig,
+  operation: SqlOperation,
+  locale: Locale
+): string {
   if (!table.primaryKey) {
-    return `-- Error: Primary Key (Grouping Key) required for Parent-Child generation in ${table.name}`;
+    return `-- ${translate(locale, 'sql.pkGroupingRequiredParentChild', { tableName: table.name })}`;
   }
 
   let output = '';

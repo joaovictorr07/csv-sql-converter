@@ -2,13 +2,15 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { TableConfig } from '../models/table-config';
 import { ColumnMapping } from '../models/column-mapping';
 import { SqlOperation } from '../types/sql-operation';
+import { I18nService } from './i18n.service';
 import { LoadingService } from './loading.service';
-import { SqlGenerationService } from './sql-generation.service';
+import { SqlGenerationError, SqlGenerationService } from './sql-generation.service';
 
 @Injectable({
   providedIn: 'root'
 })
 export class StoreService {
+  private i18n = inject(I18nService);
   private loading = inject(LoadingService);
   private sqlGeneration = inject(SqlGenerationService);
 
@@ -142,20 +144,23 @@ export class StoreService {
       const sql = await this.loading.track(
         {
           context: 'sql-generation',
-          title: 'Generating SQL',
-          message: 'Processing CSV data in the background.'
+          titleKey: 'loading.sqlGeneration.title',
+          messageKey: 'loading.sqlGeneration.message'
         },
         () =>
           this.sqlGeneration.generate({
             tables: this.tables(),
-            operation: this.sqlOperation()
+            operation: this.sqlOperation(),
+            locale: this.i18n.locale()
           })
       );
 
       this.generatedSql.set(sql);
     } catch (error) {
       this.generationError.set(
-        error instanceof Error ? error.message : 'Failed to generate SQL.'
+        error instanceof SqlGenerationError
+          ? this.i18n.t(`errors.sqlGeneration.${error.code}`)
+          : this.i18n.t('errors.sqlGeneration.UNEXPECTED_GENERATION_ERROR')
       );
     } finally {
       this.isGenerating.set(false);

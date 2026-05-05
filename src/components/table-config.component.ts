@@ -1,10 +1,11 @@
-﻿import { Component, input, output, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Component, inject, input, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { ColumnMapping } from '../models/column-mapping';
 import { TableConfig } from '../models/table-config';
+import { I18nService } from '../services/i18n.service';
 import { StoreService } from '../services/store.service';
 import { BooleanMode } from '../types/boolean-mode';
-import { ColumnMapping } from '../models/column-mapping';
 
 @Component({
   selector: 'app-table-config',
@@ -12,83 +13,81 @@ import { ColumnMapping } from '../models/column-mapping';
   imports: [CommonModule, FormsModule],
   template: `
     <div class="mb-4 rounded-lg border border-slate-700 bg-slate-800 p-3 shadow-sm transition-all sm:p-4">
-      <!-- Header / Top Bar -->
       <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div class="flex min-w-0 items-center gap-3">
-          <input 
-            type="checkbox" 
+          <input
+            type="checkbox"
             [checked]="config().selected"
             (change)="toggleSelection($event)"
-            class="w-5 h-5 rounded border-slate-600 text-blue-500 focus:ring-blue-500 bg-slate-700"
+            class="h-5 w-5 rounded border-slate-600 bg-slate-700 text-blue-500 focus:ring-blue-500"
           >
           <div class="flex flex-col">
              <h3 class="text-lg font-semibold text-white">{{ config().name }}</h3>
              <div class="flex items-center gap-2">
-               <span class="text-xs text-slate-500">{{ config().data.length }} rows</span>
-               <span class="text-xs bg-slate-700 text-slate-400 px-1 rounded">{{ config().columns.length }} columns</span>
+               <span class="text-xs text-slate-500">{{ i18n.t('tableConfig.rows', { count: config().data.length }) }}</span>
+               <span class="rounded bg-slate-700 px-1 text-xs text-slate-400">{{ i18n.t('tableConfig.columns', { count: config().columns.length }) }}</span>
              </div>
           </div>
         </div>
         <button (click)="remove.emit(config().id)" class="self-end text-sm text-red-400 hover:text-red-300 sm:self-auto">
-          Remove
+          {{ i18n.t('tableConfig.remove') }}
         </button>
       </div>
 
-      <!-- Parsing Settings (New) -->
-      <div class="bg-slate-900/50 p-3 rounded mb-4 border border-slate-700/50">
-        <h4 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">CSV Parsing & Value Settings</h4>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div class="mb-4 rounded border border-slate-700/50 bg-slate-900/50 p-3">
+        <h4 class="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">{{ i18n.t('tableConfig.parsingSettings') }}</h4>
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
-            <label class="block text-xs text-slate-500 mb-1">Delimiter</label>
-            <select 
-              [ngModel]="config().delimiter" 
+            <label class="mb-1 block text-xs text-slate-500">{{ i18n.t('tableConfig.delimiter') }}</label>
+            <select
+              [ngModel]="config().delimiter"
               (ngModelChange)="updateDelimiter($event)"
-              class="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-slate-200 focus:border-blue-500 outline-none">
-              <option value=",">Comma (,)</option>
-              <option value=";">Semicolon (;)</option>
-              <option value="|">Pipe (|)</option>
-              <option value="TAB">Tab (\\t)</option>
+              class="w-full rounded border border-slate-600 bg-slate-800 px-2 py-1 text-xs text-slate-200 outline-none focus:border-blue-500"
+            >
+              <option value=",">{{ i18n.t('tableConfig.delimiters.comma') }}</option>
+              <option value=";">{{ i18n.t('tableConfig.delimiters.semicolon') }}</option>
+              <option value="|">{{ i18n.t('tableConfig.delimiters.pipe') }}</option>
+              <option value="TAB">{{ i18n.t('tableConfig.delimiters.tab') }}</option>
             </select>
-            <p class="text-[10px] text-slate-600 mt-1">Changing this re-parses the file.</p>
+            <p class="mt-1 text-[10px] text-slate-600">{{ i18n.t('tableConfig.delimiterReparseHint') }}</p>
           </div>
           <div>
-            <label class="block text-xs text-slate-500 mb-1">Boolean (0/1) Handling</label>
-            <select 
-              [ngModel]="config().booleanMode" 
+            <label class="mb-1 block text-xs text-slate-500">{{ i18n.t('tableConfig.booleanHandling') }}</label>
+            <select
+              [ngModel]="config().booleanMode"
               (ngModelChange)="updateBoolMode($event)"
-              class="w-full bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-slate-200 focus:border-blue-500 outline-none">
-              <option value="AS_IS">As Is (0 or 1)</option>
-              <option value="TRUE_FALSE">SQL Boolean (FALSE/TRUE)</option>
-              <option value="BIT">Numeric (0/1)</option>
-              <option value="STRING">String ('0'/'1')</option>
+              class="w-full rounded border border-slate-600 bg-slate-800 px-2 py-1 text-xs text-slate-200 outline-none focus:border-blue-500"
+            >
+              <option value="AS_IS">{{ i18n.t('tableConfig.booleanOptions.AS_IS') }}</option>
+              <option value="TRUE_FALSE">{{ i18n.t('tableConfig.booleanOptions.TRUE_FALSE') }}</option>
+              <option value="BIT">{{ i18n.t('tableConfig.booleanOptions.BIT') }}</option>
+              <option value="STRING">{{ i18n.t('tableConfig.booleanOptions.STRING') }}</option>
             </select>
           </div>
         </div>
       </div>
 
-      <!-- Main Config Grid -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-        <!-- SQL Table Name -->
+      <div class="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
-          <label class="block text-xs text-slate-400 mb-1">SQL Table Name</label>
-          <input 
-            type="text" 
+          <label class="mb-1 block text-xs text-slate-400">{{ i18n.t('tableConfig.sqlTableName') }}</label>
+          <input
+            type="text"
             [ngModel]="config().sqlTableName"
             (ngModelChange)="updateSqlName($event)"
-            class="w-full bg-slate-900 border border-slate-600 rounded px-2 py-2 text-sm text-slate-200 focus:border-blue-500 outline-none"
+            class="w-full rounded border border-slate-600 bg-slate-900 px-2 py-2 text-sm text-slate-200 outline-none focus:border-blue-500"
           >
         </div>
 
-        <!-- Primary Key (Grouping Key) -->
         <div>
-          <label class="block text-xs text-slate-400 mb-1">
-            Primary Key ({{ config().hasChildInSameFile ? 'Grouping Key' : 'PK' }})
+          <label class="mb-1 block text-xs text-slate-400">
+            {{ config().hasChildInSameFile ? i18n.t('tableConfig.primaryKeyGrouping') : i18n.t('tableConfig.primaryKeyPk') }}
           </label>
-          <select 
+          <select
             [ngModel]="config().primaryKey"
             (ngModelChange)="updatePk($event)"
-            class="w-full bg-slate-900 border border-slate-600 rounded px-2 py-2 text-sm text-slate-200 focus:border-blue-500 outline-none">
-            <option [value]="null">-- Select Column --</option>
+            class="w-full rounded border border-slate-600 bg-slate-900 px-2 py-2 text-sm text-slate-200 outline-none focus:border-blue-500"
+          >
+            <option [value]="null">{{ i18n.t('tableConfig.selectColumn') }}</option>
             @for (col of config().columns; track col) {
               <option [value]="col">{{ col }}</option>
             }
@@ -96,42 +95,41 @@ import { ColumnMapping } from '../models/column-mapping';
         </div>
       </div>
 
-      <!-- Column Mapping Panel (Parent) -->
-      <div class="border border-slate-700 rounded-lg overflow-hidden mb-4">
-        <button 
-          class="w-full px-4 py-2 bg-slate-700/50 hover:bg-slate-700 flex items-center justify-between text-sm font-medium text-slate-300"
+      <div class="mb-4 overflow-hidden rounded-lg border border-slate-700">
+        <button
+          class="flex w-full items-center justify-between bg-slate-700/50 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700"
           (click)="toggleParentCols()"
         >
-          <span>Column Mapping (Parent)</span>
-          <span class="text-xs">{{ countIncluded(config().parentMappings) }} selected</span>
+          <span>{{ i18n.t('tableConfig.parentColumnMapping') }}</span>
+          <span class="text-xs">{{ i18n.t('tableConfig.columnMappingSelected', { count: countIncluded(config().parentMappings) }) }}</span>
         </button>
-        
+
         @if (showParentCols()) {
           <div class="custom-scrollbar max-h-60 overflow-x-auto overflow-y-auto bg-slate-900/50 p-3 sm:max-h-72">
             <div class="mb-2 grid min-w-[540px] grid-cols-12 gap-2 px-1 text-xs text-slate-500">
-              <div class="col-span-1 text-center">Inc.</div>
-              <div class="col-span-5">CSV Header</div>
-              <div class="col-span-6">SQL Column</div>
+              <div class="col-span-1 text-center">{{ i18n.t('tableConfig.include') }}</div>
+              <div class="col-span-5">{{ i18n.t('tableConfig.csvHeader') }}</div>
+              <div class="col-span-6">{{ i18n.t('tableConfig.sqlColumn') }}</div>
             </div>
             @for (map of config().parentMappings; track map.original) {
               <div class="mb-2 grid min-w-[540px] grid-cols-12 items-center gap-2">
                 <div class="col-span-1 flex justify-center">
-                  <input 
-                    type="checkbox" 
-                    [checked]="map.include" 
+                  <input
+                    type="checkbox"
+                    [checked]="map.include"
                     (change)="updateParentMap(map.original, { include: $any($event.target).checked })"
-                    class="rounded bg-slate-800 border-slate-600 text-blue-500"
+                    class="rounded border-slate-600 bg-slate-800 text-blue-500"
                   >
                 </div>
-                <div class="col-span-5 truncate text-slate-300 font-mono text-xs" title="{{map.original}}">
+                <div class="col-span-5 truncate font-mono text-xs text-slate-300" title="{{ map.original }}">
                   {{ map.original }}
                 </div>
                 <div class="col-span-6">
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     [ngModel]="map.sqlName"
                     (change)="updateParentMap(map.original, { sqlName: $any($event.target).value })"
-                    class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-white focus:border-blue-500 outline-none"
+                    class="w-full rounded border border-slate-700 bg-slate-800 px-2 py-1 text-xs text-white outline-none focus:border-blue-500"
                   >
                 </div>
               </div>
@@ -140,69 +138,67 @@ import { ColumnMapping } from '../models/column-mapping';
         }
       </div>
 
-      <!-- Advanced: Has Children in Same File -->
       <div class="mb-4">
-         <label class="flex items-center gap-2 cursor-pointer">
-           <input 
-             type="checkbox" 
+         <label class="flex cursor-pointer items-center gap-2">
+           <input
+             type="checkbox"
              [checked]="config().hasChildInSameFile"
              (change)="updateHasChild($event)"
-             class="rounded bg-slate-700 border-slate-600 text-purple-500 focus:ring-purple-500"
+             class="rounded border-slate-600 bg-slate-700 text-purple-500 focus:ring-purple-500"
            >
-           <span class="text-sm font-medium text-slate-300">Has Child Table in Same File?</span>
+           <span class="text-sm font-medium text-slate-300">{{ i18n.t('tableConfig.hasChildInSameFile') }}</span>
          </label>
       </div>
 
       @if (config().hasChildInSameFile) {
-        <div class="mt-3 border-l-2 border-purple-500/30 pl-3 animate-in fade-in slide-in-from-top-2 sm:ml-4 sm:pl-4">
-           <h4 class="text-sm text-purple-300 font-semibold mb-3">Child Table Settings</h4>
-           
+        <div class="animate-in slide-in-from-top-2 mt-3 border-l-2 border-purple-500/30 pl-3 fade-in sm:ml-4 sm:pl-4">
+           <h4 class="mb-3 text-sm font-semibold text-purple-300">{{ i18n.t('tableConfig.childTableSettings') }}</h4>
+
            <div class="mb-4">
-            <label class="block text-xs text-slate-400 mb-1">Child SQL Table Name</label>
-            <input 
-              type="text" 
+            <label class="mb-1 block text-xs text-slate-400">{{ i18n.t('tableConfig.childSqlTableName') }}</label>
+            <input
+              type="text"
               [ngModel]="config().childSqlTableName"
               (ngModelChange)="updateChildName($event)"
-              class="w-full bg-slate-900 border border-slate-600 rounded px-2 py-2 text-sm text-slate-200 focus:border-purple-500 outline-none"
+              class="w-full rounded border border-slate-600 bg-slate-900 px-2 py-2 text-sm text-slate-200 outline-none focus:border-purple-500"
             >
            </div>
 
-           <!-- Child Column Mapping Panel -->
-            <div class="border border-slate-700 rounded-lg overflow-hidden">
-              <button 
-                class="w-full px-4 py-2 bg-slate-700/50 hover:bg-slate-700 flex items-center justify-between text-sm font-medium text-slate-300"
+            <div class="overflow-hidden rounded-lg border border-slate-700">
+              <button
+                class="flex w-full items-center justify-between bg-slate-700/50 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700"
                 (click)="toggleChildCols()"
               >
-                <span>Column Mapping (Child)</span>
-                <span class="text-xs">{{ countIncluded(config().childMappings) }} selected</span>
+                <span>{{ i18n.t('tableConfig.childColumnMapping') }}</span>
+                <span class="text-xs">{{ i18n.t('tableConfig.columnMappingSelected', { count: countIncluded(config().childMappings) }) }}</span>
               </button>
-              
+
               @if (showChildCols()) {
                 <div class="custom-scrollbar max-h-60 overflow-x-auto overflow-y-auto bg-slate-900/50 p-3 sm:max-h-72">
                   <div class="mb-2 grid min-w-[540px] grid-cols-12 gap-2 px-1 text-xs text-slate-500">
-                    <div class="col-span-1 text-center">Inc.</div>
-                    <div class="col-span-5">CSV Header</div>
-                    <div class="col-span-6">SQL Column</div>
+                    <div class="col-span-1 text-center">{{ i18n.t('tableConfig.include') }}</div>
+                    <div class="col-span-5">{{ i18n.t('tableConfig.csvHeader') }}</div>
+                    <div class="col-span-6">{{ i18n.t('tableConfig.sqlColumn') }}</div>
                   </div>
                   @for (map of config().childMappings; track map.original) {
                     <div class="mb-2 grid min-w-[540px] grid-cols-12 items-center gap-2">
                       <div class="col-span-1 flex justify-center">
-                        <input 
-                          type="checkbox" 
-                          [checked]="map.include" 
+                        <input
+                          type="checkbox"
+                          [checked]="map.include"
                           (change)="updateChildMap(map.original, { include: $any($event.target).checked })"
-                          class="rounded bg-slate-800 border-slate-600 text-purple-500"
+                          class="rounded border-slate-600 bg-slate-800 text-purple-500"
                         >
                       </div>
-                      <div class="col-span-5 truncate text-slate-300 font-mono text-xs" title="{{map.original}}">
+                      <div class="col-span-5 truncate font-mono text-xs text-slate-300" title="{{ map.original }}">
                         {{ map.original }}
                       </div>
                       <div class="col-span-6">
-                        <input 
-                          type="text" 
+                        <input
+                          type="text"
                           [ngModel]="map.sqlName"
                           (change)="updateChildMap(map.original, { sqlName: $any($event.target).value })"
-                          class="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1 text-xs text-white focus:border-purple-500 outline-none"
+                          class="w-full rounded border border-slate-700 bg-slate-800 px-2 py-1 text-xs text-white outline-none focus:border-purple-500"
                         >
                       </div>
                     </div>
@@ -212,15 +208,15 @@ import { ColumnMapping } from '../models/column-mapping';
             </div>
         </div>
       } @else {
-        <!-- External Relationship Config (Only if NO child in same file) -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 pt-4 border-t border-slate-700/50">
+        <div class="mt-4 grid grid-cols-1 gap-4 border-t border-slate-700/50 pt-4 md:grid-cols-2">
           <div>
-            <label class="block text-xs text-slate-400 mb-1">Parent Table (Different File)</label>
-            <select 
+            <label class="mb-1 block text-xs text-slate-400">{{ i18n.t('tableConfig.parentTableDifferentFile') }}</label>
+            <select
               [ngModel]="config().externalParentTableId"
               (ngModelChange)="updateExternalParent($event)"
-              class="w-full bg-slate-900 border border-slate-600 rounded px-2 py-2 text-sm text-slate-200 focus:border-blue-500 outline-none">
-              <option [value]="null">-- No External Parent --</option>
+              class="w-full rounded border border-slate-600 bg-slate-900 px-2 py-2 text-sm text-slate-200 outline-none focus:border-blue-500"
+            >
+              <option [value]="null">{{ i18n.t('tableConfig.noExternalParent') }}</option>
               @for (opt of tableOptions(); track opt.id) {
                 @if (opt.id !== config().id) {
                   <option [value]="opt.id">{{ opt.name }}</option>
@@ -229,13 +225,14 @@ import { ColumnMapping } from '../models/column-mapping';
             </select>
           </div>
           <div>
-            <label class="block text-xs text-slate-400 mb-1">Foreign Key (In this file)</label>
-            <select 
+            <label class="mb-1 block text-xs text-slate-400">{{ i18n.t('tableConfig.foreignKeyThisFile') }}</label>
+            <select
               [ngModel]="config().externalForeignKey"
               (ngModelChange)="updateExternalFk($event)"
               [disabled]="!config().externalParentTableId"
-              class="w-full bg-slate-900 border border-slate-600 rounded px-2 py-2 text-sm text-slate-200 focus:border-blue-500 outline-none disabled:opacity-50">
-              <option [value]="null">-- Select FK --</option>
+              class="w-full rounded border border-slate-600 bg-slate-900 px-2 py-2 text-sm text-slate-200 outline-none focus:border-blue-500 disabled:opacity-50"
+            >
+              <option [value]="null">{{ i18n.t('tableConfig.selectForeignKey') }}</option>
               @for (col of config().columns; track col) {
                 <option [value]="col">{{ col }}</option>
               }
@@ -248,58 +245,61 @@ import { ColumnMapping } from '../models/column-mapping';
 })
 export class TableConfigComponent {
   config = input.required<TableConfig>();
-  tableOptions = input.required<{id: string, name: string}[]>();
-  
+  tableOptions = input.required<{ id: string; name: string }[]>();
+
   remove = output<string>();
-  
+
+  i18n = inject(I18nService);
   store = inject(StoreService);
 
   showParentCols = signal(false);
   showChildCols = signal(false);
 
   toggleParentCols() {
-    this.showParentCols.update(v => !v);
+    this.showParentCols.update((value) => !value);
   }
 
   toggleChildCols() {
-    this.showChildCols.update(v => !v);
+    this.showChildCols.update((value) => !value);
   }
 
-  toggleSelection(e: Event) {
-    const checked = (e.target as HTMLInputElement).checked;
+  toggleSelection(event: Event) {
+    const checked = (event.target as HTMLInputElement).checked;
     this.store.updateTable(this.config().id, { selected: checked });
   }
 
-  updateDelimiter(val: string) {
-    this.store.reparseTable(this.config().id, val);
+  updateDelimiter(value: string) {
+    this.store.reparseTable(this.config().id, value);
   }
 
-  updateBoolMode(val: BooleanMode) {
-    this.store.updateTable(this.config().id, { booleanMode: val });
+  updateBoolMode(value: BooleanMode) {
+    this.store.updateTable(this.config().id, { booleanMode: value });
   }
 
-  updateSqlName(val: string) {
-    this.store.updateTable(this.config().id, { sqlTableName: val });
+  updateSqlName(value: string) {
+    this.store.updateTable(this.config().id, { sqlTableName: value });
   }
 
-  updatePk(val: string) {
-    this.store.updateTable(this.config().id, { primaryKey: val });
+  updatePk(value: string | null) {
+    this.store.updateTable(this.config().id, { primaryKey: value });
   }
 
-  updateHasChild(e: Event) {
-    this.store.updateTable(this.config().id, { hasChildInSameFile: (e.target as HTMLInputElement).checked });
+  updateHasChild(event: Event) {
+    this.store.updateTable(this.config().id, {
+      hasChildInSameFile: (event.target as HTMLInputElement).checked
+    });
   }
 
-  updateChildName(val: string) {
-    this.store.updateTable(this.config().id, { childSqlTableName: val });
+  updateChildName(value: string) {
+    this.store.updateTable(this.config().id, { childSqlTableName: value });
   }
 
-  updateExternalParent(val: string) {
-    this.store.updateTable(this.config().id, { externalParentTableId: val });
+  updateExternalParent(value: string | null) {
+    this.store.updateTable(this.config().id, { externalParentTableId: value });
   }
 
-  updateExternalFk(val: string) {
-    this.store.updateTable(this.config().id, { externalForeignKey: val });
+  updateExternalFk(value: string | null) {
+    this.store.updateTable(this.config().id, { externalForeignKey: value });
   }
 
   updateParentMap(original: string, changes: Partial<ColumnMapping>) {
@@ -311,6 +311,6 @@ export class TableConfigComponent {
   }
 
   countIncluded(mappings: ColumnMapping[]) {
-    return mappings.filter(m => m.include).length;
+    return mappings.filter((mapping) => mapping.include).length;
   }
 }
