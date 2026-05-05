@@ -277,7 +277,7 @@ export class TableConfigComponent {
   }
 
   updateSqlName(value: string) {
-    this.store.updateTable(this.config().id, { sqlTableName: value });
+    this.store.updateSqlTableName(this.config().id, value);
   }
 
   updatePk(value: string | null) {
@@ -291,7 +291,7 @@ export class TableConfigComponent {
   }
 
   updateChildName(value: string) {
-    this.store.updateTable(this.config().id, { childSqlTableName: value });
+    this.store.updateChildSqlTableName(this.config().id, value);
   }
 
   updateExternalParent(value: string | null) {
@@ -303,10 +303,20 @@ export class TableConfigComponent {
   }
 
   updateParentMap(original: string, changes: Partial<ColumnMapping>) {
+    if (changes.sqlName !== undefined && Object.keys(changes).length === 1) {
+      this.store.updateParentMappingSqlName(this.config().id, original, changes.sqlName);
+      return;
+    }
+
     this.store.updateParentMapping(this.config().id, original, changes);
   }
 
   updateChildMap(original: string, changes: Partial<ColumnMapping>) {
+    if (changes.sqlName !== undefined && Object.keys(changes).length === 1) {
+      this.store.updateChildMappingSqlName(this.config().id, original, changes.sqlName);
+      return;
+    }
+
     this.store.updateChildMapping(this.config().id, original, changes);
   }
 

@@ -78,6 +78,18 @@
     }
   },
   "errors": {
+    "fileRead": {
+      "FILE_DECODING_ERROR": "Falha ao ler ou decodificar o arquivo CSV {{fileName}}."
+    },
+    "validation": {
+      "DUPLICATE_SQL_IDENTIFIER": "Identificador SQL duplicado: {{identifier}} ({{context}}).",
+      "contexts": {
+        "parentTable": "nome da tabela de {{fileName}}",
+        "childTable": "nome da tabela filha de {{fileName}}",
+        "parentColumns": "mapeamento de colunas pai de {{fileName}}",
+        "childColumns": "mapeamento de colunas filha de {{fileName}}"
+      }
+    },
     "sqlGeneration": {
       "UNEXPECTED_GENERATION_ERROR": "Falha ao gerar o SQL.",
       "WORKER_RUNTIME_ERROR": "A geração de SQL falhou durante a execução em segundo plano.",

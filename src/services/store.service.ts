@@ -1,10 +1,14 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
-import { TableConfig } from '../models/table-config';
 import { ColumnMapping } from '../models/column-mapping';
+import { TableConfig } from '../models/table-config';
 import { SqlOperation } from '../types/sql-operation';
+import { decodeCsvFile } from '../utils/csv-text-decoder';
+import { normalizeSqlIdentifier } from '../utils/sql-identifiers';
 import { I18nService } from './i18n.service';
 import { LoadingService } from './loading.service';
 import { SqlGenerationError, SqlGenerationService } from './sql-generation.service';
+
+type MappingScope = 'parent' | 'child';
 
 @Injectable({
   providedIn: 'root'
@@ -25,13 +29,16 @@ export class StoreService {
   });
 
   addFiles(files: FileList) {
-    Array.from(files).forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const text = event.target?.result as string;
+    this.generationError.set(null);
+
+    Array.from(files).forEach(async (file) => {
+      try {
+        const text = await decodeCsvFile(file);
         this.initTable(file.name, text);
-      };
-      reader.readAsText(file);
+      } catch (error) {
+        console.error(error);
+        this.generationError.set(this.i18n.t('errors.fileRead.FILE_DECODING_ERROR', { fileName: file.name }));
+      }
     });
   }
 
@@ -40,9 +47,19 @@ export class StoreService {
   }
 
   updateTable(id: string, updates: Partial<TableConfig>) {
+    const sanitizedUpdates = this.sanitizeTableUpdates(updates);
+
     this.tables.update((current) =>
-      current.map((table) => (table.id === id ? { ...table, ...updates } : table))
+      current.map((table) => (table.id === id ? { ...table, ...sanitizedUpdates } : table))
     );
+  }
+
+  updateSqlTableName(id: string, value: string) {
+    this.updateTable(id, { sqlTableName: value });
+  }
+
+  updateChildSqlTableName(id: string, value: string) {
+    this.updateTable(id, { childSqlTableName: value });
   }
 
   reparseTable(id: string, newDelimiter: string) {
@@ -51,34 +68,17 @@ export class StoreService {
 
     const { headers, data } = this.parseRawData(table.rawContent, newDelimiter);
 
-    const reconcileMappings = (oldMappings: ColumnMapping[], newHeaders: string[]) => {
+    const reconcileMappings = (oldMappings: ColumnMapping[], newHeaders: string[], includeByDefault: boolean) => {
       return newHeaders.map((header) => {
         const existing = oldMappings.find((mapping) => mapping.original === header);
-        return (
-          existing || {
-            original: header,
-            sqlName: header.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, ''),
-            include: true
-          }
-        );
+        return existing
+          ? { ...existing, sqlName: normalizeSqlIdentifier(existing.sqlName) }
+          : this.createColumnMapping(header, includeByDefault);
       });
     };
 
-    const reconcileChildMappings = (oldMappings: ColumnMapping[], newHeaders: string[]) => {
-      return newHeaders.map((header) => {
-        const existing = oldMappings.find((mapping) => mapping.original === header);
-        return (
-          existing || {
-            original: header,
-            sqlName: header.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, ''),
-            include: false
-          }
-        );
-      });
-    };
-
-    const newParentMappings = reconcileMappings(table.parentMappings, headers);
-    const newChildMappings = reconcileChildMappings(table.childMappings, headers);
+    const newParentMappings = reconcileMappings(table.parentMappings, headers, true);
+    const newChildMappings = reconcileMappings(table.childMappings, headers, false);
 
     let newPk = table.primaryKey;
     if (newPk && !headers.includes(newPk)) newPk = null;
@@ -101,6 +101,8 @@ export class StoreService {
   }
 
   updateParentMapping(tableId: string, originalCol: string, changes: Partial<ColumnMapping>) {
+    const sanitizedChanges = this.sanitizeMappingChanges(changes);
+
     this.tables.update((current) =>
       current.map((table) => {
         if (table.id !== tableId) return table;
@@ -108,14 +110,20 @@ export class StoreService {
         return {
           ...table,
           parentMappings: table.parentMappings.map((mapping) =>
-            mapping.original === originalCol ? { ...mapping, ...changes } : mapping
+            mapping.original === originalCol ? { ...mapping, ...sanitizedChanges } : mapping
           )
         };
       })
     );
   }
 
+  updateParentMappingSqlName(tableId: string, originalCol: string, value: string) {
+    this.updateParentMapping(tableId, originalCol, { sqlName: value });
+  }
+
   updateChildMapping(tableId: string, originalCol: string, changes: Partial<ColumnMapping>) {
+    const sanitizedChanges = this.sanitizeMappingChanges(changes);
+
     this.tables.update((current) =>
       current.map((table) => {
         if (table.id !== tableId) return table;
@@ -123,11 +131,15 @@ export class StoreService {
         return {
           ...table,
           childMappings: table.childMappings.map((mapping) =>
-            mapping.original === originalCol ? { ...mapping, ...changes } : mapping
+            mapping.original === originalCol ? { ...mapping, ...sanitizedChanges } : mapping
           )
         };
       })
     );
+  }
+
+  updateChildMappingSqlName(tableId: string, originalCol: string, value: string) {
+    this.updateChildMapping(tableId, originalCol, { sqlName: value });
   }
 
   setOperation(operation: SqlOperation) {
@@ -137,8 +149,15 @@ export class StoreService {
   async generate(): Promise<void> {
     if (this.isGenerating()) return;
 
-    this.isGenerating.set(true);
     this.generationError.set(null);
+
+    const validationError = this.validateSelectedTables();
+    if (validationError) {
+      this.generationError.set(validationError);
+      return;
+    }
+
+    this.isGenerating.set(true);
 
     try {
       const sql = await this.loading.track(
@@ -184,20 +203,7 @@ export class StoreService {
     }
 
     const { headers, data } = this.parseRawData(content, bestDelimiter);
-
     const cleanName = filename.replace(/\.csv$/i, '');
-
-    const mappings: ColumnMapping[] = headers.map((header) => ({
-      original: header,
-      sqlName: header.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, ''),
-      include: true
-    }));
-
-    const childMappings: ColumnMapping[] = headers.map((header) => ({
-      original: header,
-      sqlName: header.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, ''),
-      include: false
-    }));
 
     const newTable: TableConfig = {
       id: crypto.randomUUID(),
@@ -205,15 +211,15 @@ export class StoreService {
       rawContent: content,
       delimiter: bestDelimiter,
       booleanMode: 'AS_IS',
-      sqlTableName: cleanName.replace(/\s+/g, '_'),
+      sqlTableName: normalizeSqlIdentifier(cleanName),
       columns: headers,
-      parentMappings: mappings,
+      parentMappings: headers.map((header) => this.createColumnMapping(header, true)),
       data,
       selected: true,
       primaryKey: headers[0] || null,
       hasChildInSameFile: false,
-      childSqlTableName: `${cleanName.replace(/\s+/g, '_')}_child`,
-      childMappings,
+      childSqlTableName: normalizeSqlIdentifier(`${cleanName}_child`),
+      childMappings: headers.map((header) => this.createColumnMapping(header, false)),
       externalParentTableId: null,
       externalForeignKey: null
     };
@@ -298,5 +304,108 @@ export class StoreService {
     });
 
     return { headers, data };
+  }
+
+  private createColumnMapping(header: string, include: boolean): ColumnMapping {
+    return {
+      original: header,
+      sqlName: normalizeSqlIdentifier(header),
+      include
+    };
+  }
+
+  private sanitizeTableUpdates(updates: Partial<TableConfig>): Partial<TableConfig> {
+    const sanitizedUpdates = { ...updates };
+
+    if (sanitizedUpdates.sqlTableName !== undefined) {
+      sanitizedUpdates.sqlTableName = normalizeSqlIdentifier(sanitizedUpdates.sqlTableName);
+    }
+
+    if (sanitizedUpdates.childSqlTableName !== undefined) {
+      sanitizedUpdates.childSqlTableName = normalizeSqlIdentifier(sanitizedUpdates.childSqlTableName);
+    }
+
+    return sanitizedUpdates;
+  }
+
+  private sanitizeMappingChanges(changes: Partial<ColumnMapping>): Partial<ColumnMapping> {
+    const sanitizedChanges = { ...changes };
+
+    if (sanitizedChanges.sqlName !== undefined) {
+      sanitizedChanges.sqlName = normalizeSqlIdentifier(sanitizedChanges.sqlName);
+    }
+
+    return sanitizedChanges;
+  }
+
+  private validateSelectedTables(): string | null {
+    const selectedTables = this.tables().filter((table) => table.selected);
+    const producedTableNames = new Set<string>();
+
+    for (const table of selectedTables) {
+      const tableNames = [
+        {
+          identifier: table.sqlTableName,
+          context: this.i18n.t('errors.validation.contexts.parentTable', { fileName: table.name })
+        }
+      ];
+
+      if (table.hasChildInSameFile) {
+        tableNames.push({
+          identifier: table.childSqlTableName,
+          context: this.i18n.t('errors.validation.contexts.childTable', { fileName: table.name })
+        });
+      }
+
+      for (const entry of tableNames) {
+        const normalizedIdentifier = normalizeSqlIdentifier(entry.identifier);
+        if (producedTableNames.has(normalizedIdentifier)) {
+          return this.buildDuplicateIdentifierError(normalizedIdentifier, entry.context);
+        }
+
+        producedTableNames.add(normalizedIdentifier);
+      }
+
+      const parentColumnsError = this.validateMappingIdentifiers(table, 'parent');
+      if (parentColumnsError) {
+        return parentColumnsError;
+      }
+
+      if (table.hasChildInSameFile) {
+        const childColumnsError = this.validateMappingIdentifiers(table, 'child');
+        if (childColumnsError) {
+          return childColumnsError;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  private validateMappingIdentifiers(table: TableConfig, scope: MappingScope): string | null {
+    const mappings = scope === 'parent' ? table.parentMappings : table.childMappings;
+    const seen = new Set<string>();
+    const includedMappings = mappings.filter((mapping) => mapping.include);
+
+    for (const mapping of includedMappings) {
+      const normalizedIdentifier = normalizeSqlIdentifier(mapping.sqlName);
+      if (seen.has(normalizedIdentifier)) {
+        const contextKey =
+          scope === 'parent' ? 'errors.validation.contexts.parentColumns' : 'errors.validation.contexts.childColumns';
+
+        return this.buildDuplicateIdentifierError(
+          normalizedIdentifier,
+          this.i18n.t(contextKey, { fileName: table.name })
+        );
+      }
+
+      seen.add(normalizedIdentifier);
+    }
+
+    return null;
+  }
+
+  private buildDuplicateIdentifierError(identifier: string, context: string): string {
+    return this.i18n.t('errors.validation.DUPLICATE_SQL_IDENTIFIER', { identifier, context });
   }
 }

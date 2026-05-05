@@ -78,6 +78,18 @@
     }
   },
   "errors": {
+    "fileRead": {
+      "FILE_DECODING_ERROR": "Failed to read or decode CSV file {{fileName}}."
+    },
+    "validation": {
+      "DUPLICATE_SQL_IDENTIFIER": "Duplicate SQL identifier: {{identifier}} ({{context}}).",
+      "contexts": {
+        "parentTable": "table name for {{fileName}}",
+        "childTable": "child table name for {{fileName}}",
+        "parentColumns": "parent column mappings for {{fileName}}",
+        "childColumns": "child column mappings for {{fileName}}"
+      }
+    },
     "sqlGeneration": {
       "UNEXPECTED_GENERATION_ERROR": "Failed to generate SQL.",
       "WORKER_RUNTIME_ERROR": "SQL generation failed while running in the background.",
