@@ -116,6 +116,33 @@ function findMappingByOriginal(mappings: ColumnMapping[], original: string): Col
   return mappings.find((mapping) => mapping.original === original);
 }
 
+function getPrimaryKeyColumns(table: TableConfig): string[] {
+  return table.primaryKeyColumns ?? [];
+}
+
+function getPrimaryKeyMappings(table: TableConfig, includedMappings: ColumnMapping[]): ColumnMapping[] | null {
+  const primaryKeyColumns = getPrimaryKeyColumns(table);
+  if (primaryKeyColumns.length === 0) return null;
+
+  const mappingByOriginal = new Map(includedMappings.map((mapping) => [mapping.original, mapping]));
+  const resolvedMappings = primaryKeyColumns
+    .map((column) => mappingByOriginal.get(column))
+    .filter((mapping): mapping is ColumnMapping => Boolean(mapping));
+
+  return resolvedMappings.length === primaryKeyColumns.length ? resolvedMappings : null;
+}
+
+function buildPrimaryKeyWhereClause(table: TableConfig, pkMappings: ColumnMapping[], row: Record<string, unknown>): string {
+  return pkMappings
+    .map((mapping) => `${mapping.sqlName} = ${formatSqlValue(table, mapping, row[mapping.original])}`)
+    .join(' AND ');
+}
+
+function buildCompositeKey(table: TableConfig, pkMappings: ColumnMapping[], row: Record<string, unknown>): string {
+  const parts = pkMappings.map((mapping) => formatSqlValue(table, mapping, row[mapping.original]));
+  return JSON.stringify(parts);
+}
+
 function generateSingleTable(table: TableConfig, operation: SqlOperation, locale: Locale): string {
   let output = '';
   const tableName = table.sqlTableName;
@@ -123,6 +150,44 @@ function generateSingleTable(table: TableConfig, operation: SqlOperation, locale
 
   if (mappings.length === 0) {
     return `-- ${translate(locale, 'sql.noColumnsSelected', { tableName })}`;
+  }
+
+  const pkMappings = getPrimaryKeyMappings(table, mappings);
+
+  if (operation === 'UPDATE') {
+    if (!pkMappings) {
+      return `-- ${translate(locale, 'sql.pkRequiredUpdate')}`;
+    }
+
+    const pkColumns = new Set(pkMappings.map((mapping) => mapping.original));
+    const updateMappings = mappings.filter((mapping) => !pkColumns.has(mapping.original));
+
+    if (updateMappings.length === 0) {
+      return `-- ${translate(locale, 'sql.noColumnsToUpdate', { tableName })}`;
+    }
+
+    table.data.forEach((row) => {
+      const updates = updateMappings
+        .map((mapping) => `${mapping.sqlName} = ${formatSqlValue(table, mapping, row[mapping.original])}`)
+        .join(', ');
+      const whereClause = buildPrimaryKeyWhereClause(table, pkMappings, row);
+      output += `UPDATE ${tableName} SET ${updates} WHERE ${whereClause};\n`;
+    });
+
+    return output;
+  }
+
+  if (operation === 'DELETE') {
+    if (!pkMappings) {
+      return `-- ${translate(locale, 'sql.pkRequiredDelete')}`;
+    }
+
+    table.data.forEach((row) => {
+      const whereClause = buildPrimaryKeyWhereClause(table, pkMappings, row);
+      output += `DELETE FROM ${tableName} WHERE ${whereClause};\n`;
+    });
+
+    return output;
   }
 
   table.data.forEach((row) => {
@@ -134,39 +199,6 @@ function generateSingleTable(table: TableConfig, operation: SqlOperation, locale
       output += `INSERT INTO ${tableName} (${cols}) VALUES (${vals});\n`;
       return;
     }
-
-    if (operation === 'UPDATE') {
-      if (!table.primaryKey) {
-        output += `-- ${translate(locale, 'sql.pkRequiredUpdate')}\n`;
-        return;
-      }
-
-      const pkMapping = mappings.find((mapping) => mapping.original === table.primaryKey);
-      if (!pkMapping) {
-        output += `-- ${translate(locale, 'sql.pkColumnNotIncluded')}\n`;
-        return;
-      }
-
-      const pkVal = formatSqlValue(table, pkMapping, row[table.primaryKey]);
-      const updates = mappings
-        .filter((mapping) => mapping.original !== table.primaryKey)
-        .map((mapping) => `${mapping.sqlName} = ${formatSqlValue(table, mapping, row[mapping.original])}`)
-        .join(', ');
-      output += `UPDATE ${tableName} SET ${updates} WHERE ${pkMapping.sqlName} = ${pkVal};\n`;
-      return;
-    }
-
-    if (!table.primaryKey) {
-      output += `-- ${translate(locale, 'sql.pkRequiredDelete')}\n`;
-      return;
-    }
-
-    const pkMapping = findMappingByOriginal(table.parentMappings, table.primaryKey);
-    const pkName = pkMapping ? pkMapping.sqlName : table.primaryKey;
-    const pkVal = pkMapping
-      ? formatSqlValue(table, pkMapping, row[table.primaryKey])
-      : `'${String(row[table.primaryKey]).replace(/'/g, "''")}'`;
-    output += `DELETE FROM ${tableName} WHERE ${pkName} = ${pkVal};\n`;
   });
 
   return output;
@@ -177,7 +209,11 @@ function generateParentChildSameFile(
   operation: SqlOperation,
   locale: Locale
 ): string {
-  if (!table.primaryKey) {
+  const parentCols = table.parentMappings.filter((mapping) => mapping.include);
+  const childCols = table.childMappings.filter((mapping) => mapping.include);
+  const pkMappings = getPrimaryKeyMappings(table, parentCols);
+
+  if (!pkMappings) {
     return `-- ${translate(locale, 'sql.pkGroupingRequiredParentChild', { tableName: table.name })}`;
   }
 
@@ -185,21 +221,14 @@ function generateParentChildSameFile(
   const parentTable = table.sqlTableName;
   const childTable = table.childSqlTableName;
 
-  const parentCols = table.parentMappings.filter((mapping) => mapping.include);
-  const childCols = table.childMappings.filter((mapping) => mapping.include);
+  const seenParentKeys = new Set<string>();
 
-  const sortedData = [...table.data].sort((rowA, rowB) => {
-    const valA = rowA[table.primaryKey!] || '';
-    const valB = rowB[table.primaryKey!] || '';
-    return valA > valB ? 1 : valA < valB ? -1 : 0;
-  });
+  table.data.forEach((row) => {
+    const compositeKey = buildCompositeKey(table, pkMappings, row);
 
-  let lastPkValue: unknown = null;
+    if (!seenParentKeys.has(compositeKey)) {
+      seenParentKeys.add(compositeKey);
 
-  sortedData.forEach((row) => {
-    const currentPkValue = row[table.primaryKey!];
-
-    if (currentPkValue !== lastPkValue) {
       if (operation === 'INSERT') {
         const cols = parentCols.map((mapping) => mapping.sqlName).join(', ');
         const vals = parentCols
@@ -207,13 +236,9 @@ function generateParentChildSameFile(
           .join(', ');
         output += `INSERT INTO ${parentTable} (${cols}) VALUES (${vals});\n`;
       } else if (operation === 'DELETE') {
-        const pkMapping = findMappingByOriginal(table.parentMappings, table.primaryKey);
-        if (pkMapping) {
-          output += `DELETE FROM ${parentTable} WHERE ${pkMapping.sqlName} = ${formatSqlValue(table, pkMapping, currentPkValue)};\n`;
-        }
+        const whereClause = buildPrimaryKeyWhereClause(table, pkMappings, row);
+        output += `DELETE FROM ${parentTable} WHERE ${whereClause};\n`;
       }
-
-      lastPkValue = currentPkValue;
     }
 
     if (childCols.length > 0 && operation === 'INSERT') {

@@ -18,7 +18,7 @@
   },
   "generation": {
     "sqlOperation": "Opera\u00e7\u00e3o SQL",
-    "primaryKeyNote": "Observa\u00e7\u00e3o: UPDATE e DELETE exigem uma chave prim\u00e1ria v\u00e1lida selecionada para cada tabela.",
+    "primaryKeyNote": "Observa\u00e7\u00e3o: UPDATE e DELETE exigem uma ou mais colunas de chave prim\u00e1ria v\u00e1lidas selecionadas para cada tabela.",
     "generateSql": "Gerar SQL",
     "generating": "Gerando...",
     "copy": "Copiar",
@@ -49,9 +49,9 @@
       "STRING": "Texto ('0'/'1')"
     },
     "sqlTableName": "Nome da tabela SQL",
-    "primaryKeyGrouping": "Chave prim\u00e1ria (chave de agrupamento)",
-    "primaryKeyPk": "Chave prim\u00e1ria (PK)",
-    "selectColumn": "-- Selecionar coluna --",
+    "primaryKeyGrouping": "Chaves prim\u00e1rias (chave de agrupamento)",
+    "primaryKeyPk": "Chaves prim\u00e1rias (PK)",
+    "primaryKeyHint": "Selecione uma ou mais colunas para compor a chave prim\u00e1ria.",
     "parentColumnMapping": "Mapeamento de colunas (pai)",
     "childColumnMapping": "Mapeamento de colunas (filho)",
     "columnMappingSelected": "{{count}} selecionadas",
@@ -111,9 +111,9 @@
     "dateLabel": "Data",
     "sourceFileLabel": "Arquivo de origem",
     "noColumnsSelected": "Nenhuma coluna selecionada para {{tableName}}",
-    "pkRequiredUpdate": "Erro: PK obrigat\u00f3ria para UPDATE",
-    "pkColumnNotIncluded": "Erro: coluna PK n\u00e3o inclu\u00edda no mapeamento",
-    "pkRequiredDelete": "Erro: PK obrigat\u00f3ria para DELETE",
-    "pkGroupingRequiredParentChild": "Erro: chave prim\u00e1ria (chave de agrupamento) obrigat\u00f3ria para gera\u00e7\u00e3o pai-filho em {{tableName}}"
+    "pkRequiredUpdate": "Erro: ao menos uma coluna de PK v\u00e1lida \u00e9 obrigat\u00f3ria para UPDATE",
+    "pkRequiredDelete": "Erro: ao menos uma coluna de PK v\u00e1lida \u00e9 obrigat\u00f3ria para DELETE",
+    "noColumnsToUpdate": "Erro: nenhuma coluna restante para UPDATE em {{tableName}} ap\u00f3s remover as PKs selecionadas",
+    "pkGroupingRequiredParentChild": "Erro: ao menos uma coluna de chave prim\u00e1ria (chave de agrupamento) v\u00e1lida \u00e9 obrigat\u00f3ria para gera\u00e7\u00e3o pai-filho em {{tableName}}"
   }
 }

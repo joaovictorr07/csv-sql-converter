@@ -83,16 +83,22 @@ import { ColumnValueType } from '../types/column-value-type';
           <label class="mb-1 block text-xs text-slate-400">
             {{ config().hasChildInSameFile ? i18n.t('tableConfig.primaryKeyGrouping') : i18n.t('tableConfig.primaryKeyPk') }}
           </label>
-          <select
-            [ngModel]="config().primaryKey"
-            (ngModelChange)="updatePk($event)"
-            class="w-full rounded border border-slate-600 bg-slate-900 px-2 py-2 text-sm text-slate-200 outline-none focus:border-blue-500"
-          >
-            <option [value]="null">{{ i18n.t('tableConfig.selectColumn') }}</option>
-            @for (col of config().columns; track col) {
-              <option [value]="col">{{ col }}</option>
-            }
-          </select>
+          <div class="rounded border border-slate-700 bg-slate-900/60 px-3 py-2">
+            <p class="mb-2 text-xs text-slate-500">{{ i18n.t('tableConfig.primaryKeyHint') }}</p>
+            <div class="custom-scrollbar max-h-40 space-y-2 overflow-y-auto pr-1">
+              @for (col of config().columns; track col) {
+                <label class="flex items-center gap-2 text-sm text-slate-200">
+                  <input
+                    type="checkbox"
+                    [checked]="isPrimaryKeySelected(col)"
+                    (change)="togglePk(col, $any($event.target).checked)"
+                    class="rounded border-slate-600 bg-slate-800 text-blue-500"
+                  >
+                  <span class="truncate">{{ col }}</span>
+                </label>
+              }
+            </div>
+          </div>
         </div>
       </div>
 
@@ -119,8 +125,9 @@ import { ColumnValueType } from '../types/column-value-type';
                   <input
                     type="checkbox"
                     [checked]="map.include"
+                    [disabled]="isPrimaryKeySelected(map.original)"
                     (change)="updateParentMap(map.original, { include: $any($event.target).checked })"
-                    class="rounded border-slate-600 bg-slate-800 text-blue-500"
+                    class="rounded border-slate-600 bg-slate-800 text-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                 </div>
                 <div class="col-span-4 truncate font-mono text-xs text-slate-300" title="{{ map.original }}">
@@ -306,8 +313,14 @@ export class TableConfigComponent {
     this.store.updateSqlTableName(this.config().id, value);
   }
 
-  updatePk(value: string | null) {
-    this.store.updateTable(this.config().id, { primaryKey: value });
+  togglePk(column: string, checked: boolean) {
+    const current = this.config().primaryKeyColumns;
+    const next = checked ? [...current, column] : current.filter((entry) => entry !== column);
+    this.store.updatePrimaryKeyColumns(this.config().id, next);
+  }
+
+  isPrimaryKeySelected(column: string) {
+    return this.config().primaryKeyColumns.includes(column);
   }
 
   updateHasChild(event: Event) {

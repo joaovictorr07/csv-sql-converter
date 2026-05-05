@@ -62,6 +62,26 @@ export class StoreService {
     this.updateTable(id, { childSqlTableName: value });
   }
 
+  updatePrimaryKeyColumns(id: string, columns: string[]) {
+    this.tables.update((current) =>
+      current.map((table) => {
+        if (table.id !== id) return table;
+
+        const primaryKeyColumns = this.normalizePrimaryKeyColumns(table.columns, columns);
+        const primaryKeySet = new Set(primaryKeyColumns);
+        const parentMappings = table.parentMappings.map((mapping) =>
+          primaryKeySet.has(mapping.original) ? { ...mapping, include: true } : mapping
+        );
+
+        return {
+          ...table,
+          primaryKeyColumns,
+          parentMappings
+        };
+      })
+    );
+  }
+
   reparseTable(id: string, newDelimiter: string) {
     const table = this.tables().find((entry) => entry.id === id);
     if (!table) return;
@@ -80,8 +100,11 @@ export class StoreService {
     const newParentMappings = reconcileMappings(table.parentMappings, headers, true);
     const newChildMappings = reconcileMappings(table.childMappings, headers, false);
 
-    let newPk = table.primaryKey;
-    if (newPk && !headers.includes(newPk)) newPk = null;
+    const newPrimaryKeyColumns = this.normalizePrimaryKeyColumns(headers, table.primaryKeyColumns);
+    const primaryKeySet = new Set(newPrimaryKeyColumns);
+    const ensuredParentMappings = newParentMappings.map((mapping) =>
+      primaryKeySet.has(mapping.original) ? { ...mapping, include: true } : mapping
+    );
 
     this.tables.update((current) =>
       current.map((entry) => {
@@ -92,9 +115,9 @@ export class StoreService {
           delimiter: newDelimiter,
           columns: headers,
           data,
-          parentMappings: newParentMappings,
+          parentMappings: ensuredParentMappings,
           childMappings: newChildMappings,
-          primaryKey: newPk
+          primaryKeyColumns: newPrimaryKeyColumns
         };
       })
     );
@@ -110,7 +133,9 @@ export class StoreService {
         return {
           ...table,
           parentMappings: table.parentMappings.map((mapping) =>
-            mapping.original === originalCol ? { ...mapping, ...sanitizedChanges } : mapping
+            mapping.original === originalCol
+              ? { ...mapping, ...this.enforcePrimaryKeyInclusion(table, mapping.original, sanitizedChanges) }
+              : mapping
           )
         };
       })
@@ -212,7 +237,7 @@ export class StoreService {
       parentMappings: headers.map((header) => this.createColumnMapping(header, true)),
       data,
       selected: true,
-      primaryKey: headers[0] || null,
+      primaryKeyColumns: headers[0] ? [headers[0]] : [],
       hasChildInSameFile: false,
       childSqlTableName: normalizeSqlIdentifier(`${cleanName}_child`),
       childMappings: headers.map((header) => this.createColumnMapping(header, false)),
@@ -325,6 +350,13 @@ export class StoreService {
     return sanitizedUpdates;
   }
 
+  private normalizePrimaryKeyColumns(headers: string[], columns: string[] | undefined): string[] {
+    if (!columns?.length) return [];
+
+    const requested = new Set(columns.filter((column) => headers.includes(column)));
+    return headers.filter((header) => requested.has(header));
+  }
+
   private sanitizeMappingChanges(changes: Partial<ColumnMapping>): Partial<ColumnMapping> {
     const sanitizedChanges = { ...changes };
 
@@ -333,6 +365,20 @@ export class StoreService {
     }
 
     return sanitizedChanges;
+  }
+
+  private enforcePrimaryKeyInclusion(
+    table: TableConfig,
+    originalCol: string,
+    changes: Partial<ColumnMapping>
+  ): Partial<ColumnMapping> {
+    if (changes.include !== false) return changes;
+    if (!table.primaryKeyColumns.includes(originalCol)) return changes;
+
+    return {
+      ...changes,
+      include: true
+    };
   }
 
   private validateSelectedTables(): string | null {

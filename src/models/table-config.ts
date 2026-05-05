@@ -11,7 +11,7 @@ export interface TableConfig {
   
   // Parent / Main Table
   sqlTableName: string;
-  primaryKey: string | null; // CSV Column used as PK/Grouping
+  primaryKeyColumns: string[]; // CSV columns used as PK/Grouping
   columns: string[]; // All original headers
   parentMappings: ColumnMapping[];
   data: any[]; // Array of row objects

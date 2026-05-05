@@ -18,7 +18,7 @@
   },
   "generation": {
     "sqlOperation": "SQL Operation",
-    "primaryKeyNote": "Note: UPDATE and DELETE require a valid Primary Key to be selected for each table.",
+    "primaryKeyNote": "Note: UPDATE and DELETE require one or more valid Primary Key columns to be selected for each table.",
     "generateSql": "Generate SQL",
     "generating": "Generating...",
     "copy": "Copy",
@@ -49,9 +49,9 @@
       "STRING": "String ('0'/'1')"
     },
     "sqlTableName": "SQL Table Name",
-    "primaryKeyGrouping": "Primary Key (Grouping Key)",
-    "primaryKeyPk": "Primary Key (PK)",
-    "selectColumn": "-- Select Column --",
+    "primaryKeyGrouping": "Primary Keys (Grouping Key)",
+    "primaryKeyPk": "Primary Keys (PK)",
+    "primaryKeyHint": "Select one or more columns to compose the primary key.",
     "parentColumnMapping": "Column Mapping (Parent)",
     "childColumnMapping": "Column Mapping (Child)",
     "columnMappingSelected": "{{count}} selected",
@@ -111,9 +111,9 @@
     "dateLabel": "Date",
     "sourceFileLabel": "Source File",
     "noColumnsSelected": "No columns selected for {{tableName}}",
-    "pkRequiredUpdate": "Error: PK required for UPDATE",
-    "pkColumnNotIncluded": "Error: PK column not included in mapping",
-    "pkRequiredDelete": "Error: PK required for DELETE",
-    "pkGroupingRequiredParentChild": "Error: Primary Key (Grouping Key) required for Parent-Child generation in {{tableName}}"
+    "pkRequiredUpdate": "Error: at least one valid PK column is required for UPDATE",
+    "pkRequiredDelete": "Error: at least one valid PK column is required for DELETE",
+    "noColumnsToUpdate": "Error: no columns left to UPDATE in {{tableName}} after removing the selected PKs",
+    "pkGroupingRequiredParentChild": "Error: at least one valid Primary Key (Grouping Key) column is required for Parent-Child generation in {{tableName}}"
   }
 }
