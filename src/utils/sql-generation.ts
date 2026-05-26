@@ -7,9 +7,16 @@ import { ColumnMapping } from '../models/column-mapping';
 import { BooleanMode } from '../types/boolean-mode';
 import { translate } from '../i18n/catalog';
 import { Locale } from '../types/locale';
+import {
+  SqlGenerationResponse,
+  ValidationIssue,
+  ValidationIssueCode
+} from '../types/sql-generation';
 import { SqlOperation } from '../types/sql-operation';
 import { InvalidTypedValueError, RelationshipSqlGenerationError } from './sql-generation-errors';
-import { normalizeSqlIdentifier } from './sql-identifiers';
+import { normalizeSqlIdentifierOrEmpty } from './sql-identifiers';
+
+const MAX_ROW_VALIDATION_ISSUES = 50;
 
 interface ResolvedAutoIncrementIdConfig {
   columnName: string;
@@ -39,6 +46,91 @@ interface RelationshipProjection {
   values: string[];
 }
 
+interface TypedValueSpec {
+  tableName: string;
+  columnOriginal: string;
+  columnSqlName: string;
+  expectedType: ColumnMapping['valueType'];
+  booleanMode: BooleanMode;
+}
+
+class ValidationIssueCollector {
+  private seen = new Set<string>();
+  private rowIssueCount = 0;
+  readonly issues: ValidationIssue[] = [];
+
+  add(issue: ValidationIssue) {
+    const key = JSON.stringify({
+      code: issue.code,
+      severity: issue.severity,
+      tableId: issue.tableId,
+      tableName: issue.tableName,
+      parentTableName: issue.parentTableName,
+      childTableName: issue.childTableName,
+      columnOriginal: issue.columnOriginal,
+      columnSqlName: issue.columnSqlName,
+      fkColumnName: issue.fkColumnName,
+      csvLineNumber: issue.csvLineNumber,
+      rawValue: issue.rawValue,
+      params: issue.params
+    });
+
+    if (this.seen.has(key)) {
+      return;
+    }
+
+    if (issue.csvLineNumber !== undefined) {
+      if (this.rowIssueCount >= MAX_ROW_VALIDATION_ISSUES) {
+        this.addIssueLimitWarning();
+        return;
+      }
+
+      this.rowIssueCount++;
+    }
+
+    this.seen.add(key);
+    this.issues.push(issue);
+  }
+
+  private addIssueLimitWarning() {
+    const key = 'VALIDATION_ISSUE_LIMIT_REACHED';
+    if (this.seen.has(key)) {
+      return;
+    }
+
+    this.seen.add(key);
+    this.issues.push({
+      severity: 'warning',
+      phase: 'generation',
+      code: 'VALIDATION_ISSUE_LIMIT_REACHED',
+      params: {
+        maxIssues: MAX_ROW_VALIDATION_ISSUES
+      }
+    });
+  }
+}
+
+export function generateSqlResponse(
+  tables: TableConfig[],
+  operation: SqlOperation,
+  locale: Locale
+): SqlGenerationResponse {
+  const issues = validateGenerationTables(tables, operation);
+  const errors = issues.filter((issue) => issue.severity === 'error');
+  if (errors.length > 0) {
+    return {
+      ok: false,
+      issues
+    };
+  }
+
+  return {
+    ok: true,
+    sql: buildSql(tables, operation, locale),
+    issues
+  };
+}
+
 export function buildSql(tables: TableConfig[], operation: SqlOperation, locale: Locale): string {
   const selectedTables = tables.filter((table) => table.selected);
   const sortedTables = sortTablesByDependency(selectedTables, operation === 'DELETE');
@@ -63,6 +155,29 @@ export function buildSql(tables: TableConfig[], operation: SqlOperation, locale:
   });
 
   return sql;
+}
+
+function validateGenerationTables(tables: TableConfig[], operation: SqlOperation): ValidationIssue[] {
+  const selectedTables = tables.filter((table) => table.selected);
+  const sortedTables = sortTablesByDependency(selectedTables, operation === 'DELETE');
+  const context = createSqlGenerationContext(selectedTables);
+  const collector = new ValidationIssueCollector();
+
+  sortedTables.forEach((table) => {
+    if (table.hasChildInSameFile) {
+      validateSameFileTableGeneration(table, operation, context, collector);
+      return;
+    }
+
+    if (operation === 'INSERT' && table.externalParentTableId) {
+      validateExternalChildGeneration(table, context, collector);
+      return;
+    }
+
+    validateSingleTableGeneration(table, operation, context, collector);
+  });
+
+  return collector.issues;
 }
 
 function createSqlGenerationContext(tables: TableConfig[]): SqlGenerationContext {
@@ -130,26 +245,38 @@ function sortTablesByDependency(tables: TableConfig[], reverse: boolean): TableC
 }
 
 function formatSqlValue(table: TableConfig, mapping: ColumnMapping, value: unknown): string {
+  return formatTypedSqlValue(
+    {
+      tableName: table.sqlTableName,
+      columnOriginal: mapping.original,
+      columnSqlName: mapping.sqlName,
+      expectedType: mapping.valueType,
+      booleanMode: table.booleanMode
+    },
+    value
+  );
+}
+
+function formatTypedSqlValue(spec: TypedValueSpec, value: unknown): string {
   if (value === null || value === undefined || value === 'null' || value === '') return 'NULL';
 
   const rawValue = String(value);
   const trimmedValue = rawValue.trim();
 
-  switch (mapping.valueType) {
+  switch (spec.expectedType) {
     case 'string':
       return `'${rawValue.replace(/'/g, "''")}'`;
     case 'int':
       if (/^[+-]?\d+$/.test(trimmedValue)) return trimmedValue;
-      throwInvalidTypedValue(table, mapping, rawValue);
-    case 'decimal': {
+      throwInvalidTypedValue(spec, rawValue);
+    case 'decimal':
       if (/^[+-]?\d+(?:[,.]\d+)?$/.test(trimmedValue)) {
         return trimmedValue.replace(',', '.');
       }
 
-      throwInvalidTypedValue(table, mapping, rawValue);
-    }
+      throwInvalidTypedValue(spec, rawValue);
     case 'bool':
-      return formatBooleanValue(trimmedValue, table.booleanMode, table, mapping, rawValue);
+      return formatBooleanValue(trimmedValue, spec.booleanMode, spec, rawValue);
     default:
       return `'${rawValue.replace(/'/g, "''")}'`;
   }
@@ -158,8 +285,7 @@ function formatSqlValue(table: TableConfig, mapping: ColumnMapping, value: unkno
 function formatBooleanValue(
   trimmedValue: string,
   boolMode: BooleanMode,
-  table: TableConfig,
-  mapping: ColumnMapping,
+  spec: TypedValueSpec,
   rawValue: string
 ): string {
   const normalized = trimmedValue.toLowerCase();
@@ -172,7 +298,7 @@ function formatBooleanValue(
     return renderBoolean(false, boolMode);
   }
 
-  throwInvalidTypedValue(table, mapping, rawValue);
+  throwInvalidTypedValue(spec, rawValue);
 }
 
 function renderBoolean(value: boolean, boolMode: BooleanMode): string {
@@ -181,22 +307,18 @@ function renderBoolean(value: boolean, boolMode: BooleanMode): string {
   return value ? '1' : '0';
 }
 
-function throwInvalidTypedValue(table: TableConfig, mapping: ColumnMapping, rawValue: string): never {
+function throwInvalidTypedValue(spec: TypedValueSpec, rawValue: string): never {
   throw new InvalidTypedValueError({
-    tableName: table.sqlTableName,
-    columnOriginal: mapping.original,
-    columnSqlName: mapping.sqlName,
-    expectedType: mapping.valueType,
+    tableName: spec.tableName,
+    columnOriginal: spec.columnOriginal,
+    columnSqlName: spec.columnSqlName,
+    expectedType: spec.expectedType,
     rawValue
   });
 }
 
-function getPrimaryKeyColumns(table: TableConfig): string[] {
-  return table.primaryKeyColumns ?? [];
-}
-
 function getPrimaryKeyMappings(table: TableConfig, includedMappings: ColumnMapping[]): ColumnMapping[] | null {
-  const primaryKeyColumns = getPrimaryKeyColumns(table);
+  const primaryKeyColumns = table.primaryKeyColumns ?? [];
   if (primaryKeyColumns.length === 0) return null;
 
   const mappingByOriginal = new Map(includedMappings.map((mapping) => [mapping.original, mapping]));
@@ -217,7 +339,7 @@ function resolveAutoIncrementIdConfig(table: TableConfig): ResolvedAutoIncrement
   if (!table.autoIncrementId.enabled) return null;
 
   return {
-    columnName: normalizeSqlIdentifier(table.autoIncrementId.columnName),
+    columnName: normalizeSqlIdentifierOrEmpty(table.autoIncrementId.columnName),
     startAt: table.autoIncrementId.startAt
   };
 }
@@ -254,6 +376,215 @@ function buildInsertValues(
   }
 
   return values.join(', ');
+}
+
+function validateSingleTableGeneration(
+  table: TableConfig,
+  operation: SqlOperation,
+  context: SqlGenerationContext,
+  collector: ValidationIssueCollector
+) {
+  const mappings = table.parentMappings.filter((mapping) => mapping.include);
+  const pkMappings = getPrimaryKeyMappings(table, mappings);
+  const registry = context.parentRegistriesByTableId.get(table.id) ?? null;
+  const seenLogicalKeys = new Set<string>();
+  let nextAutoIncrementId = resolveAutoIncrementIdConfig(table)?.startAt ?? 0;
+
+  table.data.forEach((row, rowIndex) => {
+    const csvLineNumber = rowIndex + 2;
+
+    validateMappingsForRow(table, mappings, row, csvLineNumber, collector);
+
+    if (operation === 'UPDATE' && pkMappings) {
+      validateMappingsForRow(table, pkMappings, row, csvLineNumber, collector);
+    }
+
+    if (operation === 'DELETE' && pkMappings) {
+      validateMappingsForRow(table, pkMappings, row, csvLineNumber, collector);
+    }
+
+    if (operation !== 'INSERT' || !registry) {
+      return;
+    }
+
+    const logicalKey = tryBuildParentLogicalKeyForRow(table, registry, row, csvLineNumber, collector);
+    if (!logicalKey || seenLogicalKeys.has(logicalKey.serialized)) {
+      return;
+    }
+
+    seenLogicalKeys.add(logicalKey.serialized);
+    const autoIncrementIdValue = table.autoIncrementId.enabled ? nextAutoIncrementId++ : undefined;
+    registerParentReference(registry, table, row, logicalKey, autoIncrementIdValue);
+  });
+}
+
+function validateSameFileTableGeneration(
+  table: TableConfig,
+  operation: SqlOperation,
+  context: SqlGenerationContext,
+  collector: ValidationIssueCollector
+) {
+  const parentCols = table.parentMappings.filter((mapping) => mapping.include);
+  const childCols = table.childMappings.filter((mapping) => mapping.include);
+  const pkMappings = getPrimaryKeyMappings(table, parentCols);
+  const registry = context.parentRegistriesByTableId.get(table.id) ?? null;
+  const seenParentKeys = new Set<string>();
+  let nextAutoIncrementId = resolveAutoIncrementIdConfig(table)?.startAt ?? 0;
+
+  table.data.forEach((row, rowIndex) => {
+    const csvLineNumber = rowIndex + 2;
+
+    validateMappingsForRow(table, parentCols, row, csvLineNumber, collector);
+
+    if (!pkMappings) {
+      return;
+    }
+
+    const logicalKey = tryBuildLogicalKeyFromMappings(
+      table,
+      pkMappings,
+      row,
+      csvLineNumber,
+      {
+        childTableName: table.childSqlTableName,
+        parentTableName: table.sqlTableName
+      },
+      collector
+    );
+
+    if (logicalKey && !seenParentKeys.has(logicalKey.serialized)) {
+      seenParentKeys.add(logicalKey.serialized);
+      if (registry && operation === 'INSERT') {
+        const autoIncrementIdValue = table.autoIncrementId.enabled ? nextAutoIncrementId++ : undefined;
+        registerParentReference(registry, table, row, logicalKey, autoIncrementIdValue);
+      }
+    }
+
+    if (operation !== 'INSERT') {
+      return;
+    }
+
+    validateMappingsForRow(table, childCols, row, csvLineNumber, collector);
+    if (!logicalKey) {
+      return;
+    }
+
+    tryResolveSameFileRelationshipProjection(table, row, registry, logicalKey, csvLineNumber, collector);
+  });
+}
+
+function validateExternalChildGeneration(
+  table: TableConfig,
+  context: SqlGenerationContext,
+  collector: ValidationIssueCollector
+) {
+  const parentTable = tryResolveExternalParentTable(table, context, collector);
+  if (!parentTable) {
+    return;
+  }
+
+  const ownMappings = table.parentMappings.filter((mapping) => mapping.include);
+  const ownRegistry = context.parentRegistriesByTableId.get(table.id) ?? null;
+  const seenLogicalKeys = new Set<string>();
+  let nextAutoIncrementId = resolveAutoIncrementIdConfig(table)?.startAt ?? 0;
+
+  table.data.forEach((row, rowIndex) => {
+    const csvLineNumber = rowIndex + 2;
+
+    validateMappingsForRow(table, ownMappings, row, csvLineNumber, collector);
+    tryResolveExternalRelationshipProjection(table, row, parentTable, context, csvLineNumber, collector);
+
+    if (!ownRegistry) {
+      return;
+    }
+
+    const ownLogicalKey = tryBuildParentLogicalKeyForRow(table, ownRegistry, row, csvLineNumber, collector);
+    if (!ownLogicalKey || seenLogicalKeys.has(ownLogicalKey.serialized)) {
+      return;
+    }
+
+    seenLogicalKeys.add(ownLogicalKey.serialized);
+    const autoIncrementIdValue = table.autoIncrementId.enabled ? nextAutoIncrementId++ : undefined;
+    registerParentReference(ownRegistry, table, row, ownLogicalKey, autoIncrementIdValue);
+  });
+}
+
+function validateMappingsForRow(
+  table: TableConfig,
+  mappings: ColumnMapping[],
+  row: Record<string, unknown>,
+  csvLineNumber: number,
+  collector: ValidationIssueCollector
+) {
+  mappings.forEach((mapping) => {
+    const value = row[mapping.original];
+
+    try {
+      formatSqlValue(table, mapping, value);
+      collectLeadingZeroWarning(table, mapping, value, csvLineNumber, collector);
+    } catch (error) {
+      if (error instanceof InvalidTypedValueError) {
+        collector.add({
+          severity: 'error',
+          phase: 'generation',
+          code: 'INVALID_TYPED_VALUE',
+          tableId: table.id,
+          fileName: table.name,
+          tableName: table.sqlTableName,
+          columnOriginal: mapping.original,
+          columnSqlName: mapping.sqlName,
+          csvLineNumber,
+          rawValue: error.details.rawValue,
+          params: {
+            expectedType: mapping.valueType
+          }
+        });
+      }
+    }
+  });
+}
+
+function collectLeadingZeroWarning(
+  table: TableConfig,
+  mapping: ColumnMapping,
+  value: unknown,
+  csvLineNumber: number,
+  collector: ValidationIssueCollector
+) {
+  if (mapping.valueType !== 'int' && mapping.valueType !== 'decimal') {
+    return;
+  }
+
+  if (value === null || value === undefined) {
+    return;
+  }
+
+  const rawValue = String(value).trim();
+  if (!rawValue) {
+    return;
+  }
+
+  const hasLeadingZero =
+    (mapping.valueType === 'int' && /^[+-]?0\d+$/.test(rawValue)) ||
+    (mapping.valueType === 'decimal' && /^[+-]?0\d+[,.]?\d*$/.test(rawValue));
+
+  if (!hasLeadingZero) {
+    return;
+  }
+
+  collector.add({
+    severity: 'warning',
+    phase: 'generation',
+    code: 'VALUE_LOSES_LEADING_ZERO',
+    tableId: table.id,
+    fileName: table.name,
+    tableName: table.sqlTableName,
+    columnOriginal: mapping.original,
+    columnSqlName: mapping.sqlName,
+    csvLineNumber,
+    rawValue,
+    params: {}
+  });
 }
 
 function generateSingleTable(
@@ -454,6 +785,19 @@ function resolveExternalParentTable(table: TableConfig, context: SqlGenerationCo
   return parentTable;
 }
 
+function tryResolveExternalParentTable(
+  table: TableConfig,
+  context: SqlGenerationContext,
+  collector: ValidationIssueCollector
+): TableConfig | null {
+  try {
+    return resolveExternalParentTable(table, context);
+  } catch (error) {
+    collectRelationshipError(table, table.sqlTableName, undefined, error, collector);
+    return null;
+  }
+}
+
 function buildParentLogicalKeyForRow(
   table: TableConfig,
   registry: RelationshipParentRegistry,
@@ -472,6 +816,21 @@ function buildParentLogicalKeyForRow(
   });
 }
 
+function tryBuildParentLogicalKeyForRow(
+  table: TableConfig,
+  registry: RelationshipParentRegistry,
+  row: Record<string, unknown>,
+  csvLineNumber: number,
+  collector: ValidationIssueCollector
+): ResolvedLogicalKey | null {
+  try {
+    return buildParentLogicalKeyForRow(table, registry, row);
+  } catch (error) {
+    collectRelationshipError(table, table.sqlTableName, csvLineNumber, error, collector);
+    return null;
+  }
+}
+
 function buildLogicalKeyFromMappings(
   sourceTable: TableConfig,
   mappings: ColumnMapping[],
@@ -484,13 +843,32 @@ function buildLogicalKeyFromMappings(
       throw new RelationshipSqlGenerationError('RELATIONSHIP_ROW_KEY_INCOMPLETE', details);
     }
 
-    return formatSqlValue(sourceTable, mapping, value);
+    return {
+      serialized: formatSqlValue(sourceTable, mapping, value),
+      display: `${mapping.original}=${String(value)}`
+    };
   });
 
   return {
-    serialized: JSON.stringify(parts),
-    display: parts.join(', ')
+    serialized: JSON.stringify(parts.map((part) => part.serialized)),
+    display: parts.map((part) => part.display).join(', ')
   };
+}
+
+function tryBuildLogicalKeyFromMappings(
+  sourceTable: TableConfig,
+  mappings: ColumnMapping[],
+  row: Record<string, unknown>,
+  csvLineNumber: number,
+  details: { childTableName: string; parentTableName: string },
+  collector: ValidationIssueCollector
+): ResolvedLogicalKey | null {
+  try {
+    return buildLogicalKeyFromMappings(sourceTable, mappings, row, details);
+  } catch (error) {
+    collectRelationshipError(sourceTable, sourceTable.sqlTableName, csvLineNumber, error, collector);
+    return null;
+  }
 }
 
 function buildLogicalKeyFromExternalMappings(
@@ -518,12 +896,24 @@ function buildLogicalKeyFromExternalMappings(
       });
     }
 
-    return formatSqlValue(parentTable, parentMapping, value);
+    return {
+      serialized: formatTypedSqlValue(
+        {
+          tableName: childTable.sqlTableName,
+          columnOriginal: childColumn,
+          columnSqlName: childColumn,
+          expectedType: parentMapping.valueType,
+          booleanMode: parentTable.booleanMode
+        },
+        value
+      ),
+      display: `${parentMapping.original}=${String(value)}`
+    };
   });
 
   return {
-    serialized: JSON.stringify(parts),
-    display: parts.join(', ')
+    serialized: JSON.stringify(parts.map((part) => part.serialized)),
+    display: parts.map((part) => part.display).join(', ')
   };
 }
 
@@ -555,14 +945,14 @@ function registerParentReference(
 
 function getSameFileForeignKeyColumns(table: TableConfig): string[] {
   return table.relationshipTargetMode === 'auto-increment'
-    ? [normalizeSqlIdentifier(table.sameFileForeignKeyColumnName)]
-    : table.sameFileSelectedPkForeignKeys.map((entry) => normalizeSqlIdentifier(entry.fkColumnName));
+    ? [normalizeSqlIdentifierOrEmpty(table.sameFileForeignKeyColumnName)]
+    : table.sameFileSelectedPkForeignKeys.map((entry) => normalizeSqlIdentifierOrEmpty(entry.fkColumnName));
 }
 
 function getExternalForeignKeyColumns(table: TableConfig): string[] {
   return table.relationshipTargetMode === 'auto-increment'
-    ? [normalizeSqlIdentifier(table.externalForeignKeyColumnName)]
-    : table.externalSelectedPkForeignKeys.map((entry) => normalizeSqlIdentifier(entry.fkColumnName));
+    ? [normalizeSqlIdentifierOrEmpty(table.externalForeignKeyColumnName)]
+    : table.externalSelectedPkForeignKeys.map((entry) => normalizeSqlIdentifierOrEmpty(entry.fkColumnName));
 }
 
 function resolveSameFileRelationshipProjection(
@@ -590,7 +980,7 @@ function resolveSameFileRelationshipProjection(
     }
 
     return {
-      columns: [normalizeSqlIdentifier(table.sameFileForeignKeyColumnName)],
+      columns: [normalizeSqlIdentifierOrEmpty(table.sameFileForeignKeyColumnName)],
       values: [String(generatedId)]
     };
   }
@@ -602,6 +992,22 @@ function resolveSameFileRelationshipProjection(
     table.childSqlTableName,
     table.sqlTableName
   );
+}
+
+function tryResolveSameFileRelationshipProjection(
+  table: TableConfig,
+  row: Record<string, unknown>,
+  registry: RelationshipParentRegistry | null,
+  logicalKey: ResolvedLogicalKey,
+  csvLineNumber: number,
+  collector: ValidationIssueCollector
+): RelationshipProjection | null {
+  try {
+    return resolveSameFileRelationshipProjection(table, row, registry, logicalKey);
+  } catch (error) {
+    collectRelationshipError(table, table.childSqlTableName, csvLineNumber, error, collector);
+    return null;
+  }
 }
 
 function resolveExternalRelationshipProjection(
@@ -638,7 +1044,7 @@ function resolveExternalRelationshipProjection(
     }
 
     return {
-      columns: [normalizeSqlIdentifier(childTable.externalForeignKeyColumnName)],
+      columns: [normalizeSqlIdentifierOrEmpty(childTable.externalForeignKeyColumnName)],
       values: [String(generatedId)]
     };
   }
@@ -650,6 +1056,22 @@ function resolveExternalRelationshipProjection(
     childTable.sqlTableName,
     parentTable.sqlTableName
   );
+}
+
+function tryResolveExternalRelationshipProjection(
+  childTable: TableConfig,
+  row: Record<string, unknown>,
+  parentTable: TableConfig,
+  context: SqlGenerationContext,
+  csvLineNumber: number,
+  collector: ValidationIssueCollector
+): RelationshipProjection | null {
+  try {
+    return resolveExternalRelationshipProjection(childTable, row, parentTable, context);
+  } catch (error) {
+    collectRelationshipError(childTable, childTable.sqlTableName, csvLineNumber, error, collector);
+    return null;
+  }
 }
 
 function resolveProjectedPrimaryKeyValues(
@@ -682,7 +1104,52 @@ function resolveProjectedPrimaryKeyValues(
   });
 
   return {
-    columns: configs.map((config) => normalizeSqlIdentifier(config.fkColumnName)),
+    columns: configs.map((config) => normalizeSqlIdentifierOrEmpty(config.fkColumnName)),
     values
   };
+}
+
+function collectRelationshipError(
+  table: TableConfig,
+  tableName: string,
+  csvLineNumber: number | undefined,
+  error: unknown,
+  collector: ValidationIssueCollector
+) {
+  if (error instanceof InvalidTypedValueError) {
+    collector.add({
+      severity: 'error',
+      phase: 'generation',
+      code: 'INVALID_TYPED_VALUE',
+      tableId: table.id,
+      fileName: table.name,
+      tableName,
+      columnOriginal: error.details.columnOriginal,
+      columnSqlName: error.details.columnSqlName,
+      csvLineNumber,
+      rawValue: error.details.rawValue,
+      params: {
+        expectedType: error.details.expectedType
+      }
+    });
+    return;
+  }
+
+  if (error instanceof RelationshipSqlGenerationError) {
+    collector.add({
+      severity: 'error',
+      phase: 'generation',
+      code: error.code as ValidationIssueCode,
+      tableId: table.id,
+      fileName: table.name,
+      tableName,
+      parentTableName: error.details.parentTableName,
+      childTableName: error.details.childTableName,
+      fkColumnName: error.details.fkColumnName,
+      csvLineNumber,
+      params: {
+        logicalKey: error.details.logicalKey ?? ''
+      }
+    });
+  }
 }

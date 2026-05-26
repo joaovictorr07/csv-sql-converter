@@ -5,8 +5,8 @@ const DUPLICATE_UNDERSCORES_REGEX = /_+/g;
 const EDGE_UNDERSCORES_REGEX = /^_+|_+$/g;
 const STARTS_WITH_NUMBER_REGEX = /^\d/;
 
-export function normalizeSqlIdentifier(value: string): string {
-  const normalized = value
+function normalizeSqlIdentifierBase(value: string): string {
+  return String(value ?? '')
     .normalize('NFD')
     .replace(DIACRITICS_REGEX, '')
     .toLowerCase()
@@ -14,10 +14,23 @@ export function normalizeSqlIdentifier(value: string): string {
     .replace(SQL_IDENTIFIER_INVALID_CHARS_REGEX, '')
     .replace(DUPLICATE_UNDERSCORES_REGEX, '_')
     .replace(EDGE_UNDERSCORES_REGEX, '');
+}
+
+export function normalizeSqlIdentifierOrEmpty(value: string): string {
+  const normalized = normalizeSqlIdentifierBase(value);
+  if (!normalized) {
+    return '';
+  }
+
+  return STARTS_WITH_NUMBER_REGEX.test(normalized) ? `col_${normalized}` : normalized;
+}
+
+export function normalizeSqlIdentifier(value: string): string {
+  const normalized = normalizeSqlIdentifierOrEmpty(value);
 
   if (!normalized) {
     return 'col';
   }
 
-  return STARTS_WITH_NUMBER_REGEX.test(normalized) ? `col_${normalized}` : normalized;
+  return normalized;
 }

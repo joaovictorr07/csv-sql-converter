@@ -1,5 +1,4 @@
 import { ColumnValueType } from '../types/column-value-type';
-import { RelationshipFailureDetails, SqlGenerationErrorCode } from '../types/sql-generation';
 
 export interface InvalidTypedValueDetails {
   tableName: string;
@@ -7,6 +6,13 @@ export interface InvalidTypedValueDetails {
   columnSqlName: string;
   expectedType: ColumnValueType;
   rawValue: string;
+}
+
+export interface RelationshipFailureDetails {
+  childTableName: string;
+  parentTableName: string;
+  fkColumnName?: string;
+  logicalKey?: string;
 }
 
 export class InvalidTypedValueError extends Error {

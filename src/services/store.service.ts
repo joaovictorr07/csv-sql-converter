@@ -7,18 +7,33 @@ import {
   RelationshipTargetMode,
   TableConfig
 } from '../models/table-config';
+import {
+  SqlGenerationResponse,
+  ValidationIssue,
+  ValidationIssueCode,
+  ValidationIssueSeverity
+} from '../types/sql-generation';
 import { SqlOperation } from '../types/sql-operation';
 import { decodeCsvFile } from '../utils/csv-text-decoder';
 import { normalizeSqlIdentifier } from '../utils/sql-identifiers';
+import {
+  normalizeTablesForGeneration,
+  splitValidationIssues,
+  validateSelectedTablesPreflight
+} from '../utils/sql-validation';
 import { I18nService } from './i18n.service';
 import { LoadingService } from './loading.service';
-import {
-  RelationshipGenerationErrorDetails,
-  SqlGenerationError,
-  SqlGenerationService
-} from './sql-generation.service';
+import { SqlGenerationService, SqlGenerationServiceError } from './sql-generation.service';
 
-type MappingScope = 'parent' | 'child';
+type GenerationReportSource = 'preflight' | 'worker' | 'runtime';
+
+export interface GenerationReport {
+  errors: ValidationIssue[];
+  warnings: ValidationIssue[];
+  runtimeMessage: string | null;
+  source: GenerationReportSource;
+  keptPreviousSql: boolean;
+}
 
 @Injectable({
   providedIn: 'root'
@@ -30,7 +45,7 @@ export class StoreService {
 
   tables = signal<TableConfig[]>([]);
   generatedSql = signal<string>('');
-  generationError = signal<string | null>(null);
+  generationReport = signal<GenerationReport | null>(null);
   isGenerating = signal(false);
   sqlOperation = signal<SqlOperation>('INSERT');
 
@@ -38,8 +53,18 @@ export class StoreService {
     return this.tables().map((table) => ({ id: table.id, name: table.name }));
   });
 
+  generationErrors = computed(() => {
+    return this.generationReport()?.errors.map((issue) => this.formatValidationIssue(issue)) ?? [];
+  });
+
+  generationWarnings = computed(() => {
+    return this.generationReport()?.warnings.map((issue) => this.formatValidationIssue(issue)) ?? [];
+  });
+
+  runtimeGenerationError = computed(() => this.generationReport()?.runtimeMessage ?? null);
+
   addFiles(files: FileList) {
-    this.generationError.set(null);
+    this.generationReport.set(null);
 
     Array.from(files).forEach(async (file) => {
       try {
@@ -47,7 +72,13 @@ export class StoreService {
         this.initTable(file.name, text);
       } catch (error) {
         console.error(error);
-        this.generationError.set(this.i18n.t('errors.fileRead.FILE_DECODING_ERROR', { fileName: file.name }));
+        this.generationReport.set({
+          errors: [],
+          warnings: [],
+          runtimeMessage: this.i18n.t('errors.fileRead.FILE_DECODING_ERROR', { fileName: file.name }),
+          source: 'runtime',
+          keptPreviousSql: Boolean(this.generatedSql())
+        });
       }
     });
   }
@@ -57,10 +88,8 @@ export class StoreService {
   }
 
   updateTable(id: string, updates: Partial<TableConfig>) {
-    const sanitizedUpdates = this.sanitizeTableUpdates(updates);
-
     this.applyTableUpdates((current) =>
-      current.map((table) => (table.id === id ? { ...table, ...sanitizedUpdates } : table))
+      current.map((table) => (table.id === id ? { ...table, ...updates } : table))
     );
   }
 
@@ -108,9 +137,7 @@ export class StoreService {
         return {
           ...table,
           sameFileSelectedPkForeignKeys: table.sameFileSelectedPkForeignKeys.map((entry) =>
-            entry.parentColumn === parentColumn
-              ? { ...entry, fkColumnName: normalizeSqlIdentifier(fkColumnName) }
-              : entry
+            entry.parentColumn === parentColumn ? { ...entry, fkColumnName } : entry
           )
         };
       })
@@ -140,9 +167,7 @@ export class StoreService {
         return {
           ...table,
           externalSelectedPkForeignKeys: table.externalSelectedPkForeignKeys.map((entry) =>
-            entry.parentColumn === parentColumn
-              ? { ...entry, fkColumnName: normalizeSqlIdentifier(fkColumnName) }
-              : entry
+            entry.parentColumn === parentColumn ? { ...entry, fkColumnName } : entry
           )
         };
       })
@@ -178,9 +203,7 @@ export class StoreService {
     const reconcileMappings = (oldMappings: ColumnMapping[], newHeaders: string[], includeByDefault: boolean) => {
       return newHeaders.map((header) => {
         const existing = oldMappings.find((mapping) => mapping.original === header);
-        return existing
-          ? { ...existing, sqlName: normalizeSqlIdentifier(existing.sqlName) }
-          : this.createColumnMapping(header, includeByDefault);
+        return existing ? { ...existing } : this.createColumnMapping(header, includeByDefault);
       });
     };
 
@@ -211,8 +234,6 @@ export class StoreService {
   }
 
   updateParentMapping(tableId: string, originalCol: string, changes: Partial<ColumnMapping>) {
-    const sanitizedChanges = this.sanitizeMappingChanges(changes);
-
     this.applyTableUpdates((current) =>
       current.map((table) => {
         if (table.id !== tableId) return table;
@@ -221,7 +242,7 @@ export class StoreService {
           ...table,
           parentMappings: table.parentMappings.map((mapping) =>
             mapping.original === originalCol
-              ? { ...mapping, ...this.enforcePrimaryKeyInclusion(table, mapping.original, sanitizedChanges) }
+              ? { ...mapping, ...this.enforcePrimaryKeyInclusion(table, mapping.original, changes) }
               : mapping
           )
         };
@@ -234,8 +255,6 @@ export class StoreService {
   }
 
   updateChildMapping(tableId: string, originalCol: string, changes: Partial<ColumnMapping>) {
-    const sanitizedChanges = this.sanitizeMappingChanges(changes);
-
     this.applyTableUpdates((current) =>
       current.map((table) => {
         if (table.id !== tableId) return table;
@@ -243,7 +262,7 @@ export class StoreService {
         return {
           ...table,
           childMappings: table.childMappings.map((mapping) =>
-            mapping.original === originalCol ? { ...mapping, ...sanitizedChanges } : mapping
+            mapping.original === originalCol ? { ...mapping, ...changes } : mapping
           )
         };
       })
@@ -261,18 +280,25 @@ export class StoreService {
   async generate(): Promise<void> {
     if (this.isGenerating()) return;
 
-    this.generationError.set(null);
+    this.generationReport.set(null);
 
-    const validationError = this.validateSelectedTables();
-    if (validationError) {
-      this.generationError.set(validationError);
+    const preflightIssues = validateSelectedTablesPreflight(this.tables(), this.sqlOperation());
+    const preflightSplit = splitValidationIssues(preflightIssues);
+    if (preflightSplit.errors.length > 0) {
+      this.generationReport.set({
+        errors: preflightSplit.errors,
+        warnings: preflightSplit.warnings,
+        runtimeMessage: null,
+        source: 'preflight',
+        keptPreviousSql: Boolean(this.generatedSql())
+      });
       return;
     }
 
     this.isGenerating.set(true);
 
     try {
-      const sql = await this.loading.track(
+      const response = await this.loading.track(
         {
           context: 'sql-generation',
           titleKey: 'loading.sqlGeneration.title',
@@ -280,18 +306,54 @@ export class StoreService {
         },
         () =>
           this.sqlGeneration.generate({
-            tables: this.tables(),
+            tables: normalizeTablesForGeneration(this.tables()),
             operation: this.sqlOperation(),
             locale: this.i18n.locale()
           })
       );
 
-      this.generatedSql.set(sql);
+      this.consumeGenerationResponse(response);
     } catch (error) {
-      this.generationError.set(this.buildGenerationErrorMessage(error));
+      this.generationReport.set({
+        errors: [],
+        warnings: [],
+        runtimeMessage: this.buildRuntimeErrorMessage(error),
+        source: 'runtime',
+        keptPreviousSql: Boolean(this.generatedSql())
+      });
     } finally {
       this.isGenerating.set(false);
     }
+  }
+
+  private consumeGenerationResponse(response: SqlGenerationResponse) {
+    const split = splitValidationIssues(response.issues);
+
+    if (!response.ok) {
+      this.generationReport.set({
+        errors: split.errors,
+        warnings: split.warnings,
+        runtimeMessage: null,
+        source: 'worker',
+        keptPreviousSql: Boolean(this.generatedSql())
+      });
+      return;
+    }
+
+    this.generatedSql.set(response.sql);
+
+    if (split.errors.length === 0 && split.warnings.length === 0) {
+      this.generationReport.set(null);
+      return;
+    }
+
+    this.generationReport.set({
+      errors: split.errors,
+      warnings: split.warnings,
+      runtimeMessage: null,
+      source: 'worker',
+      keptPreviousSql: false
+    });
   }
 
   private initTable(filename: string, content: string) {
@@ -503,9 +565,7 @@ export class StoreService {
 
       return {
         parentColumn,
-        fkColumnName: normalizeSqlIdentifier(
-          existing.fkColumnName || this.buildDefaultForeignKeyColumnName(tableName, parentColumn)
-        )
+        fkColumnName: existing.fkColumnName || this.buildDefaultForeignKeyColumnName(tableName, parentColumn)
       };
     });
   }
@@ -533,57 +593,11 @@ export class StoreService {
     });
   }
 
-  private sanitizeTableUpdates(updates: Partial<TableConfig>): Partial<TableConfig> {
-    const sanitizedUpdates = { ...updates };
-
-    if (sanitizedUpdates.sqlTableName !== undefined) {
-      sanitizedUpdates.sqlTableName = normalizeSqlIdentifier(sanitizedUpdates.sqlTableName);
-    }
-
-    if (sanitizedUpdates.childSqlTableName !== undefined) {
-      sanitizedUpdates.childSqlTableName = normalizeSqlIdentifier(sanitizedUpdates.childSqlTableName);
-    }
-
-    if (sanitizedUpdates.sameFileForeignKeyColumnName !== undefined) {
-      sanitizedUpdates.sameFileForeignKeyColumnName = normalizeSqlIdentifier(sanitizedUpdates.sameFileForeignKeyColumnName);
-    }
-
-    if (sanitizedUpdates.externalForeignKeyColumnName !== undefined) {
-      sanitizedUpdates.externalForeignKeyColumnName = normalizeSqlIdentifier(sanitizedUpdates.externalForeignKeyColumnName);
-    }
-
-    if (sanitizedUpdates.sameFileSelectedPkForeignKeys !== undefined) {
-      sanitizedUpdates.sameFileSelectedPkForeignKeys = sanitizedUpdates.sameFileSelectedPkForeignKeys.map((entry) => ({
-        ...entry,
-        fkColumnName: normalizeSqlIdentifier(entry.fkColumnName)
-      }));
-    }
-
-    if (sanitizedUpdates.externalSelectedPkForeignKeys !== undefined) {
-      sanitizedUpdates.externalSelectedPkForeignKeys = sanitizedUpdates.externalSelectedPkForeignKeys.map((entry) => ({
-        ...entry,
-        fkColumnName: normalizeSqlIdentifier(entry.fkColumnName)
-      }));
-    }
-
-    return sanitizedUpdates;
-  }
-
   private normalizePrimaryKeyColumns(headers: string[], columns: string[] | undefined): string[] {
     if (!columns?.length) return [];
 
     const requested = new Set(columns.filter((column) => headers.includes(column)));
     return headers.filter((header) => requested.has(header));
-  }
-
-  private sanitizeMappingChanges(changes: Partial<ColumnMapping>): Partial<ColumnMapping> {
-    const sanitizedChanges = { ...changes };
-
-    if (sanitizedChanges.sqlName !== undefined) {
-      sanitizedChanges.sqlName = normalizeSqlIdentifier(sanitizedChanges.sqlName);
-    }
-
-    return sanitizedChanges;
   }
 
   private enforcePrimaryKeyInclusion(
@@ -600,356 +614,45 @@ export class StoreService {
     };
   }
 
-  private validateSelectedTables(): string | null {
-    const selectedTables = this.tables().filter((table) => table.selected);
-    const selectedTableIds = new Set(selectedTables.map((table) => table.id));
-    const producedTableNames = new Set<string>();
+  private formatValidationIssue(issue: ValidationIssue): string {
+    const params = {
+      ...issue.params,
+      fileName: issue.fileName ?? '',
+      tableName: issue.tableName ?? '',
+      parentTable: issue.parentTableName ?? '',
+      childTable: issue.childTableName ?? '',
+      columnOriginal: issue.columnOriginal ?? '',
+      columnSqlName: issue.columnSqlName ?? '',
+      fkColumn: issue.fkColumnName ?? '',
+      csvLineNumber: issue.csvLineNumber ?? '',
+      rawValue: issue.rawValue ?? '',
+      targetLabel: this.translateValidationTarget(String(issue.params.target ?? 'parent')),
+      contextLabel: this.translateValidationContext(String(issue.params.contextKey ?? 'parentColumns')),
+      parentType: this.translateValueType(String(issue.params.parentType ?? 'string')),
+      childType: this.translateValueType(String(issue.params.childType ?? 'string')),
+      expectedType: this.translateValueType(String(issue.params.expectedType ?? 'string'))
+    };
 
-    for (const table of selectedTables) {
-      const tableNames = [
-        {
-          identifier: table.sqlTableName,
-          context: this.i18n.t('errors.validation.contexts.parentTable', { fileName: table.name })
-        }
-      ];
-
-      if (table.hasChildInSameFile) {
-        tableNames.push({
-          identifier: table.childSqlTableName,
-          context: this.i18n.t('errors.validation.contexts.childTable', { fileName: table.name })
-        });
-      }
-
-      for (const entry of tableNames) {
-        const normalizedIdentifier = normalizeSqlIdentifier(entry.identifier);
-        if (producedTableNames.has(normalizedIdentifier)) {
-          return this.buildDuplicateIdentifierError(normalizedIdentifier, entry.context);
-        }
-
-        producedTableNames.add(normalizedIdentifier);
-      }
-
-      const autoIncrementIdError = this.validateAutoIncrementId(table);
-      if (autoIncrementIdError) {
-        return autoIncrementIdError;
-      }
-
-      const parentColumnsError = this.validateMappingIdentifiers(table, 'parent');
-      if (parentColumnsError) {
-        return parentColumnsError;
-      }
-
-      if (table.hasChildInSameFile) {
-        const childColumnsError = this.validateMappingIdentifiers(table, 'child');
-        if (childColumnsError) {
-          return childColumnsError;
-        }
-      }
-
-      if (this.sqlOperation() === 'INSERT') {
-        const relationshipError = table.hasChildInSameFile
-          ? this.validateSameFileRelationship(table)
-          : this.validateExternalRelationship(table, selectedTableIds);
-
-        if (relationshipError) {
-          return relationshipError;
-        }
-      }
-    }
-
-    return null;
+    return this.i18n.t(`validationIssues.${issue.code}`, params);
   }
 
-  private validateMappingIdentifiers(table: TableConfig, scope: MappingScope): string | null {
-    const mappings = scope === 'parent' ? table.parentMappings : table.childMappings;
-    const seen = new Set<string>();
-    const includedMappings = mappings.filter((mapping) => mapping.include);
-
-    for (const mapping of includedMappings) {
-      const normalizedIdentifier = normalizeSqlIdentifier(mapping.sqlName);
-      if (seen.has(normalizedIdentifier)) {
-        const contextKey =
-          scope === 'parent' ? 'errors.validation.contexts.parentColumns' : 'errors.validation.contexts.childColumns';
-
-        return this.buildDuplicateIdentifierError(
-          normalizedIdentifier,
-          this.i18n.t(contextKey, { fileName: table.name })
-        );
-      }
-
-      seen.add(normalizedIdentifier);
-    }
-
-    if (scope === 'parent' && table.autoIncrementId.enabled) {
-      const normalizedIdentifier = normalizeSqlIdentifier(table.autoIncrementId.columnName);
-      if (seen.has(normalizedIdentifier)) {
-        return this.buildDuplicateIdentifierError(
-          normalizedIdentifier,
-          this.i18n.t('errors.validation.contexts.autoIncrementId', { fileName: table.name })
-        );
-      }
-    }
-
-    return null;
+  private translateValidationTarget(target: string): string {
+    return this.i18n.t(`validationIssues.targets.${target}`);
   }
 
-  private buildDuplicateIdentifierError(identifier: string, context: string): string {
-    return this.i18n.t('errors.validation.DUPLICATE_SQL_IDENTIFIER', { identifier, context });
+  private translateValidationContext(contextKey: string): string {
+    return this.i18n.t(`validationIssues.contexts.${contextKey}`);
   }
 
-  private validateAutoIncrementId(table: TableConfig): string | null {
-    if (!table.autoIncrementId.enabled) return null;
-
-    if (!table.autoIncrementId.columnName.trim()) {
-      return this.i18n.t('errors.validation.AUTO_INCREMENT_ID_COLUMN_REQUIRED', { fileName: table.name });
-    }
-
-    if (!Number.isInteger(table.autoIncrementId.startAt)) {
-      return this.i18n.t('errors.validation.AUTO_INCREMENT_ID_START_AT_INVALID', { fileName: table.name });
-    }
-
-    return null;
+  private translateValueType(valueType: string): string {
+    return this.i18n.t(`tableConfig.valueTypes.${valueType}`);
   }
 
-  private validateSameFileRelationship(table: TableConfig): string | null {
-    if (!table.hasChildInSameFile) return null;
-
-    if (table.primaryKeyColumns.length === 0) {
-      return this.i18n.t('errors.validation.RELATIONSHIP_PARENT_PK_REQUIRED', {
-        childTable: table.childSqlTableName,
-        parentTable: table.sqlTableName
-      });
+  private buildRuntimeErrorMessage(error: unknown): string {
+    if (error instanceof SqlGenerationServiceError) {
+      return this.i18n.t(`errors.sqlGeneration.${error.code}`);
     }
 
-    if (table.relationshipTargetMode === 'auto-increment') {
-      if (!table.autoIncrementId.enabled) {
-        return this.i18n.t('errors.validation.RELATIONSHIP_AUTO_INCREMENT_REQUIRED', {
-          parentTable: table.sqlTableName
-        });
-      }
-
-      if (!table.sameFileForeignKeyColumnName.trim()) {
-        return this.i18n.t('errors.validation.RELATIONSHIP_FK_COLUMN_REQUIRED', {
-          childTable: table.childSqlTableName
-        });
-      }
-
-      return this.validateForeignKeyOutputIdentifiers(
-        table.childSqlTableName,
-        table.childMappings.filter((mapping) => mapping.include).map((mapping) => mapping.sqlName),
-        [table.sameFileForeignKeyColumnName]
-      );
-    }
-
-    if (!this.relationshipCoversAllParentColumns(table.sameFileSelectedPkForeignKeys, table.primaryKeyColumns)) {
-      return this.i18n.t('errors.validation.RELATIONSHIP_MAPPING_INCOMPLETE', {
-        childTable: table.childSqlTableName,
-        parentTable: table.sqlTableName
-      });
-    }
-
-    return this.validateForeignKeyOutputIdentifiers(
-      table.childSqlTableName,
-      table.childMappings.filter((mapping) => mapping.include).map((mapping) => mapping.sqlName),
-      table.sameFileSelectedPkForeignKeys.map((entry) => entry.fkColumnName)
-    );
-  }
-
-  private validateExternalRelationship(table: TableConfig, selectedTableIds: Set<string>): string | null {
-    if (table.hasChildInSameFile || !table.externalParentTableId) return null;
-
-    if (!selectedTableIds.has(table.externalParentTableId)) {
-      return this.i18n.t('errors.validation.RELATIONSHIP_EXTERNAL_PARENT_NOT_FOUND', {
-        parentTable: table.externalParentTableId,
-        childTable: table.sqlTableName
-      });
-    }
-
-    const parentTable = this.tables().find((entry) => entry.id === table.externalParentTableId);
-    if (!parentTable) {
-      return this.i18n.t('errors.validation.RELATIONSHIP_EXTERNAL_PARENT_NOT_FOUND', {
-        parentTable: table.externalParentTableId,
-        childTable: table.sqlTableName
-      });
-    }
-
-    if (parentTable.primaryKeyColumns.length === 0) {
-      return this.i18n.t('errors.validation.RELATIONSHIP_PARENT_PK_REQUIRED', {
-        childTable: table.sqlTableName,
-        parentTable: parentTable.sqlTableName
-      });
-    }
-
-    if (!this.relationshipSourceMappingsComplete(table.externalRelationshipSourceMappings, parentTable.primaryKeyColumns)) {
-      return this.i18n.t('errors.validation.RELATIONSHIP_MAPPING_INCOMPLETE', {
-        childTable: table.sqlTableName,
-        parentTable: parentTable.sqlTableName
-      });
-    }
-
-    if (table.relationshipTargetMode === 'auto-increment') {
-      if (!parentTable.autoIncrementId.enabled) {
-        return this.i18n.t('errors.validation.RELATIONSHIP_AUTO_INCREMENT_REQUIRED', {
-          parentTable: parentTable.sqlTableName
-        });
-      }
-
-      if (!table.externalForeignKeyColumnName.trim()) {
-        return this.i18n.t('errors.validation.RELATIONSHIP_FK_COLUMN_REQUIRED', {
-          childTable: table.sqlTableName
-        });
-      }
-
-      return this.validateForeignKeyOutputIdentifiers(
-        table.sqlTableName,
-        this.getExternalRelationshipBaseSqlColumns(table),
-        [table.externalForeignKeyColumnName]
-      );
-    }
-
-    if (!this.relationshipCoversAllParentColumns(table.externalSelectedPkForeignKeys, parentTable.primaryKeyColumns)) {
-      return this.i18n.t('errors.validation.RELATIONSHIP_MAPPING_INCOMPLETE', {
-        childTable: table.sqlTableName,
-        parentTable: parentTable.sqlTableName
-      });
-    }
-
-    return this.validateForeignKeyOutputIdentifiers(
-      table.sqlTableName,
-      this.getExternalRelationshipBaseSqlColumns(table),
-      table.externalSelectedPkForeignKeys.map((entry) => entry.fkColumnName)
-    );
-  }
-
-  private getExternalRelationshipBaseSqlColumns(table: TableConfig): string[] {
-    const baseColumns = table.parentMappings.filter((mapping) => mapping.include).map((mapping) => mapping.sqlName);
-    if (table.autoIncrementId.enabled) {
-      baseColumns.push(table.autoIncrementId.columnName);
-    }
-
-    return baseColumns;
-  }
-
-  private relationshipCoversAllParentColumns(
-    entries: ForeignKeySqlColumnConfig[],
-    parentColumns: string[]
-  ): boolean {
-    const configuredParentColumns = new Set(entries.map((entry) => entry.parentColumn));
-    return parentColumns.every((parentColumn) => configuredParentColumns.has(parentColumn));
-  }
-
-  private relationshipSourceMappingsComplete(
-    entries: ExternalRelationshipSourceMapping[],
-    parentColumns: string[]
-  ): boolean {
-    const configuredEntries = new Map(entries.map((entry) => [entry.parentColumn, entry.childColumn]));
-    return parentColumns.every((parentColumn) => {
-      const childColumn = configuredEntries.get(parentColumn);
-      return typeof childColumn === 'string' && childColumn.length > 0;
-    });
-  }
-
-  private validateForeignKeyOutputIdentifiers(
-    childTableName: string,
-    existingColumns: string[],
-    foreignKeyColumns: string[]
-  ): string | null {
-    const seen = new Set(existingColumns.map((column) => normalizeSqlIdentifier(column)));
-
-    for (const column of foreignKeyColumns) {
-      const normalized = normalizeSqlIdentifier(column);
-      if (!normalized) {
-        return this.i18n.t('errors.validation.RELATIONSHIP_FK_COLUMN_REQUIRED', {
-          childTable: childTableName
-        });
-      }
-
-      if (seen.has(normalized)) {
-        return this.i18n.t('errors.validation.RELATIONSHIP_FK_IDENTIFIER_CONFLICT', {
-          fkColumn: normalized,
-          childTable: childTableName
-        });
-      }
-
-      seen.add(normalized);
-    }
-
-    return null;
-  }
-
-  private buildGenerationErrorMessage(error: unknown): string {
-    if (!(error instanceof SqlGenerationError)) {
-      return this.i18n.t('errors.sqlGeneration.UNEXPECTED_GENERATION_ERROR');
-    }
-
-    if (error.code === 'INVALID_TYPED_VALUE' && error.details) {
-      const details = error.details as {
-        tableName: string;
-        columnOriginal: string;
-        columnSqlName: string;
-        expectedType: string;
-        rawValue: string;
-      };
-
-      return this.i18n.t('errors.sqlGeneration.INVALID_TYPED_VALUE', {
-        tableName: details.tableName,
-        columnOriginal: details.columnOriginal,
-        columnSqlName: details.columnSqlName,
-        expectedType: this.i18n.t(`tableConfig.valueTypes.${details.expectedType}`),
-        rawValue: details.rawValue
-      });
-    }
-
-    if (this.isRelationshipErrorDetails(error.details)) {
-      return this.buildRelationshipGenerationErrorMessage(error.code, error.details);
-    }
-
-    return this.i18n.t(`errors.sqlGeneration.${error.code}`);
-  }
-
-  private isRelationshipErrorDetails(details: unknown): details is RelationshipGenerationErrorDetails {
-    if (!details || typeof details !== 'object') return false;
-
-    return 'childTableName' in details && 'parentTableName' in details;
-  }
-
-  private buildRelationshipGenerationErrorMessage(
-    code: SqlGenerationError['code'],
-    details: RelationshipGenerationErrorDetails
-  ): string {
-    switch (code) {
-      case 'RELATIONSHIP_PARENT_PK_REQUIRED':
-        return this.i18n.t('errors.sqlGeneration.RELATIONSHIP_PARENT_PK_REQUIRED', {
-          childTable: details.childTableName,
-          parentTable: details.parentTableName
-        });
-      case 'RELATIONSHIP_AUTO_INCREMENT_REQUIRED':
-        return this.i18n.t('errors.sqlGeneration.RELATIONSHIP_AUTO_INCREMENT_REQUIRED', {
-          parentTable: details.parentTableName
-        });
-      case 'RELATIONSHIP_EXTERNAL_PARENT_NOT_FOUND':
-        return this.i18n.t('errors.sqlGeneration.RELATIONSHIP_EXTERNAL_PARENT_NOT_FOUND', {
-          parentTable: details.parentTableName,
-          childTable: details.childTableName
-        });
-      case 'RELATIONSHIP_MAPPING_INCOMPLETE':
-        return this.i18n.t('errors.sqlGeneration.RELATIONSHIP_MAPPING_INCOMPLETE', {
-          childTable: details.childTableName,
-          parentTable: details.parentTableName
-        });
-      case 'RELATIONSHIP_ROW_KEY_INCOMPLETE':
-        return this.i18n.t('errors.sqlGeneration.RELATIONSHIP_ROW_KEY_INCOMPLETE', {
-          childTable: details.childTableName,
-          parentTable: details.parentTableName
-        });
-      case 'RELATIONSHIP_PARENT_ROW_NOT_FOUND':
-        return this.i18n.t('errors.sqlGeneration.RELATIONSHIP_PARENT_ROW_NOT_FOUND', {
-          childTable: details.childTableName,
-          parentTable: details.parentTableName,
-          logicalKey: details.logicalKey ?? ''
-        });
-      default:
-        return this.i18n.t(`errors.sqlGeneration.${code}`);
-    }
+    return this.i18n.t('errors.sqlGeneration.UNEXPECTED_GENERATION_ERROR');
   }
 }

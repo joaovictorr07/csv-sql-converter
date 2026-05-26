@@ -101,40 +101,54 @@
       "message": "Processing CSV data in the background."
     }
   },
+  "validationIssues": {
+    "sections": {
+      "errors": "Blocking errors ({{count}})",
+      "warnings": "Warnings ({{count}})"
+    },
+    "targets": {
+      "parent": "main table",
+      "child": "child table"
+    },
+    "contexts": {
+      "parentTable": "main table name",
+      "childTable": "child table name",
+      "parentColumns": "main table SQL columns",
+      "childColumns": "child table SQL columns",
+      "autoIncrementId": "auto-increment ID column"
+    },
+    "EMPTY_TABLE_NAME": "The {{targetLabel}} name is empty in {{fileName}}.",
+    "EMPTY_COLUMN_NAME": "Column \"{{columnOriginal}}\" in table \"{{tableName}}\" has an empty SQL name.",
+    "DUPLICATE_SQL_IDENTIFIER": "Duplicate SQL identifier \"{{identifier}}\" in {{contextLabel}}.",
+    "AUTO_INCREMENT_ID_COLUMN_REQUIRED": "Auto-increment is enabled for table \"{{tableName}}\", but the ID column name is empty.",
+    "AUTO_INCREMENT_ID_START_AT_INVALID": "The auto-increment start value for table \"{{tableName}}\" must be an integer.",
+    "INSERT_NO_COLUMNS_SELECTED": "Table \"{{tableName}}\" has no selected columns to generate INSERT statements.",
+    "UPDATE_PRIMARY_KEY_REQUIRED": "Table \"{{tableName}}\" requires a valid primary key to generate UPDATE statements.",
+    "DELETE_PRIMARY_KEY_REQUIRED": "Table \"{{tableName}}\" requires a valid primary key to generate DELETE statements.",
+    "UPDATE_NO_COLUMNS_TO_UPDATE": "Table \"{{tableName}}\" has no remaining columns to UPDATE after removing the primary key.",
+    "RELATIONSHIP_PARENT_PK_REQUIRED": "Table \"{{childTable}}\" depends on the parent key from \"{{parentTable}}\", but that key is not configured correctly.",
+    "RELATIONSHIP_AUTO_INCREMENT_REQUIRED": "Parent table \"{{parentTable}}\" must enable auto-increment for the configured foreign key.",
+    "RELATIONSHIP_MAPPING_INCOMPLETE": "The relationship between \"{{childTable}}\" and \"{{parentTable}}\" does not cover all required parent key columns.",
+    "RELATIONSHIP_FK_IDENTIFIER_CONFLICT": "Foreign key column \"{{fkColumn}}\" conflicts with another SQL column already included in \"{{childTable}}\".",
+    "RELATIONSHIP_FK_COLUMN_REQUIRED": "Table \"{{childTable}}\" has a configured foreign key, but no foreign key column was defined.",
+    "RELATIONSHIP_EXTERNAL_PARENT_NOT_FOUND": "The configured parent table for \"{{childTable}}\" was not found or is not selected for generation.",
+    "RELATIONSHIP_SOURCE_COLUMN_REQUIRED": "Table \"{{childTable}}\" does not have the source column required to map parent key \"{{columnOriginal}}\".",
+    "RELATIONSHIP_SOURCE_COLUMN_TYPE_MISMATCH": "Invalid relationship between \"{{childTable}}\" and \"{{parentTable}}\": child column \"{{childColumn}}\" is {{childType}}, but parent key \"{{parentColumn}}\" is {{parentType}}.",
+    "RELATIONSHIP_COLUMN_COUNT_MISMATCH": "Invalid relationship: the number of parent key columns differs from the number of child reference columns.",
+    "RELATIONSHIP_ROW_KEY_INCOMPLETE": "Row {{csvLineNumber}}: table \"{{childTable}}\" does not contain all values required to resolve the key in \"{{parentTable}}\".",
+    "RELATIONSHIP_PARENT_ROW_NOT_FOUND": "Row {{csvLineNumber}}: no parent record could be found for key {{logicalKey}} in \"{{parentTable}}\".",
+    "INVALID_TYPED_VALUE": "Row {{csvLineNumber}}: column \"{{columnOriginal}}\" in table \"{{tableName}}\" is configured as {{expectedType}}, but value \"{{rawValue}}\" is invalid.",
+    "VALUE_LOSES_LEADING_ZERO": "Column \"{{columnOriginal}}\" in table \"{{tableName}}\" starts with zero in value \"{{rawValue}}\". Configure it as string to preserve the original value.",
+    "VALIDATION_ISSUE_LIMIT_REACHED": "Too many row-level issues were found. Only the first {{maxIssues}} were listed."
+  },
   "errors": {
     "fileRead": {
       "FILE_DECODING_ERROR": "Failed to read or decode CSV file {{fileName}}."
     },
-    "validation": {
-      "DUPLICATE_SQL_IDENTIFIER": "Duplicate SQL identifier: {{identifier}} ({{context}}).",
-      "AUTO_INCREMENT_ID_COLUMN_REQUIRED": "The auto ID column name is required for {{fileName}}.",
-      "AUTO_INCREMENT_ID_START_AT_INVALID": "The auto ID start value must be an integer for {{fileName}}.",
-      "RELATIONSHIP_PARENT_PK_REQUIRED": "The relationship between {{childTable}} and {{parentTable}} requires a valid PK on the parent.",
-      "RELATIONSHIP_AUTO_INCREMENT_REQUIRED": "Parent table {{parentTable}} must have auto increment enabled to use an auto-increment FK.",
-      "RELATIONSHIP_MAPPING_INCOMPLETE": "The relationship for {{childTable}} must map every parent key column from {{parentTable}}.",
-      "RELATIONSHIP_FK_IDENTIFIER_CONFLICT": "FK column {{fkColumn}} conflicts with another SQL column already included in {{childTable}}.",
-      "RELATIONSHIP_FK_COLUMN_REQUIRED": "The configured relationship for {{childTable}} cannot generate INSERT without a materialized FK.",
-      "RELATIONSHIP_EXTERNAL_PARENT_NOT_FOUND": "The external parent configured for {{childTable}} was not found or is not selected for generation.",
-      "contexts": {
-        "parentTable": "table name for {{fileName}}",
-        "childTable": "child table name for {{fileName}}",
-        "parentColumns": "parent column mappings for {{fileName}}",
-        "childColumns": "child column mappings for {{fileName}}",
-        "autoIncrementId": "auto ID column for {{fileName}}"
-      }
-    },
     "sqlGeneration": {
-      "INVALID_TYPED_VALUE": "Invalid value for SQL generation in {{tableName}}. CSV column: {{columnOriginal}}, SQL column: {{columnSqlName}}, expected type: {{expectedType}}, received value: {{rawValue}}.",
-      "RELATIONSHIP_PARENT_PK_REQUIRED": "The relationship between {{childTable}} and {{parentTable}} requires a valid PK on the parent.",
-      "RELATIONSHIP_AUTO_INCREMENT_REQUIRED": "Parent table {{parentTable}} must have auto increment enabled to use an auto-increment FK.",
-      "RELATIONSHIP_EXTERNAL_PARENT_NOT_FOUND": "External parent table {{parentTable}} was not found or is not selected for generation.",
-      "RELATIONSHIP_MAPPING_INCOMPLETE": "The relationship for {{childTable}} must map every parent key column from {{parentTable}}.",
-      "RELATIONSHIP_ROW_KEY_INCOMPLETE": "A row from {{childTable}} has an incomplete key to resolve the relationship with {{parentTable}}.",
-      "RELATIONSHIP_PARENT_ROW_NOT_FOUND": "Could not resolve the parent of {{childTable}} for logical key {{logicalKey}} in {{parentTable}}.",
       "UNEXPECTED_GENERATION_ERROR": "Failed to generate SQL.",
       "WORKER_RUNTIME_ERROR": "SQL generation failed while running in the background.",
-      "WORKER_INVALID_RESPONSE": "SQL generation returned an invalid response.",
-      "WORKER_EXECUTION_ERROR": "The SQL generation worker encountered an unexpected error."
+      "WORKER_INVALID_RESPONSE": "SQL generation returned an invalid response."
     }
   },
   "sql": {
