@@ -18,53 +18,53 @@ import { ColumnValueType } from '../types/column-value-type';
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="mb-4 rounded-lg border border-slate-700 bg-slate-800 p-3 shadow-sm transition-all sm:p-4">
+    <div class="panel panel-padded">
       <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div class="flex min-w-0 items-center gap-3">
           <input
             type="checkbox"
             [checked]="config().selected"
             (change)="toggleSelection($event)"
-            class="h-5 w-5 rounded border-slate-600 bg-slate-700 text-blue-500 focus:ring-blue-500"
+            class="ui-checkbox"
           >
           <div class="flex flex-col">
-            <h3 class="text-lg font-semibold text-white">{{ config().name }}</h3>
+            <h3 class="text-lg font-semibold text-slate-900">{{ config().name }}</h3>
             <div class="flex items-center gap-2">
               <span class="text-xs text-slate-500">{{ i18n.t('tableConfig.rows', { count: config().data.length }) }}</span>
-              <span class="rounded bg-slate-700 px-1 text-xs text-slate-400">{{ i18n.t('tableConfig.columns', { count: config().columns.length }) }}</span>
+              <span class="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-xs text-slate-600">{{ i18n.t('tableConfig.columns', { count: config().columns.length }) }}</span>
             </div>
           </div>
         </div>
-        <button (click)="remove.emit(config().id)" class="self-end text-sm text-red-400 hover:text-red-300 sm:self-auto">
+        <button type="button" (click)="remove.emit(config().id)" class="ui-link-button self-end sm:self-auto">
           {{ i18n.t('tableConfig.remove') }}
         </button>
       </div>
 
-      <div class="mb-4 rounded border border-slate-700/50 bg-slate-900/50 p-3">
-        <h4 class="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">{{ i18n.t('tableConfig.parsingSettings') }}</h4>
+      <div class="subpanel mb-5 p-4">
+        <h4 class="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-600">{{ i18n.t('tableConfig.parsingSettings') }}</h4>
         <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
-            <label [attr.for]="'delimiter-' + config().id" class="mb-1 block text-xs text-slate-500">{{ i18n.t('tableConfig.delimiter') }}</label>
+            <label [attr.for]="'delimiter-' + config().id" class="field-label">{{ i18n.t('tableConfig.delimiter') }}</label>
             <select
               [id]="'delimiter-' + config().id"
               [ngModel]="config().delimiter"
               (ngModelChange)="updateDelimiter($event)"
-              class="w-full rounded border border-slate-600 bg-slate-800 px-2 py-1 text-xs text-slate-200 outline-none focus:border-blue-500"
+              class="ui-select"
             >
               <option value=",">{{ i18n.t('tableConfig.delimiters.comma') }}</option>
               <option value=";">{{ i18n.t('tableConfig.delimiters.semicolon') }}</option>
               <option value="|">{{ i18n.t('tableConfig.delimiters.pipe') }}</option>
               <option value="TAB">{{ i18n.t('tableConfig.delimiters.tab') }}</option>
             </select>
-            <p class="mt-1 text-[10px] text-slate-600">{{ i18n.t('tableConfig.delimiterReparseHint') }}</p>
+            <p class="field-hint">{{ i18n.t('tableConfig.delimiterReparseHint') }}</p>
           </div>
           <div>
-            <label [attr.for]="'boolean-mode-' + config().id" class="mb-1 block text-xs text-slate-500">{{ i18n.t('tableConfig.booleanHandling') }}</label>
+            <label [attr.for]="'boolean-mode-' + config().id" class="field-label">{{ i18n.t('tableConfig.booleanHandling') }}</label>
             <select
               [id]="'boolean-mode-' + config().id"
               [ngModel]="config().booleanMode"
               (ngModelChange)="updateBoolMode($event)"
-              class="w-full rounded border border-slate-600 bg-slate-800 px-2 py-1 text-xs text-slate-200 outline-none focus:border-blue-500"
+              class="ui-select"
             >
               <option value="AS_IS">{{ i18n.t('tableConfig.booleanOptions.AS_IS') }}</option>
               <option value="TRUE_FALSE">{{ i18n.t('tableConfig.booleanOptions.TRUE_FALSE') }}</option>
@@ -77,30 +77,30 @@ import { ColumnValueType } from '../types/column-value-type';
 
       <div class="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
         <div>
-          <label [attr.for]="'sql-table-name-' + config().id" class="mb-1 block text-xs text-slate-400">{{ i18n.t('tableConfig.sqlTableName') }}</label>
+          <label [attr.for]="'sql-table-name-' + config().id" class="field-label">{{ i18n.t('tableConfig.sqlTableName') }}</label>
           <input
             [id]="'sql-table-name-' + config().id"
             type="text"
             [ngModel]="config().sqlTableName"
             (ngModelChange)="updateSqlName($event)"
-            class="w-full rounded border border-slate-600 bg-slate-900 px-2 py-2 text-sm text-slate-200 outline-none focus:border-blue-500"
+            class="ui-input"
           >
         </div>
 
         <div>
-          <p class="mb-1 block text-xs text-slate-400">
+          <p class="field-label">
             {{ config().hasChildInSameFile ? i18n.t('tableConfig.primaryKeyGrouping') : i18n.t('tableConfig.primaryKeyPk') }}
           </p>
-          <div class="rounded border border-slate-700 bg-slate-900/60 px-3 py-2">
-            <p class="mb-2 text-xs text-slate-500">{{ i18n.t('tableConfig.primaryKeyHint') }}</p>
+          <div class="subpanel px-3 py-3">
+            <p class="mb-2 text-xs text-slate-600">{{ i18n.t('tableConfig.primaryKeyHint') }}</p>
             <div class="custom-scrollbar max-h-40 space-y-2 overflow-y-auto pr-1">
               @for (col of config().columns; track col) {
-                <label class="flex items-center gap-2 text-sm text-slate-200">
+                  <label class="flex items-center gap-2 text-sm text-slate-700">
                   <input
                     type="checkbox"
                     [checked]="isPrimaryKeySelected(col)"
                     (change)="togglePk(col, $any($event.target).checked)"
-                    class="rounded border-slate-600 bg-slate-800 text-blue-500"
+                    class="ui-checkbox"
                   >
                   <span class="truncate">{{ col }}</span>
                 </label>
@@ -110,20 +110,20 @@ import { ColumnValueType } from '../types/column-value-type';
         </div>
       </div>
 
-      <div class="mb-4 rounded border border-slate-700/50 bg-slate-900/50 p-3">
+      <div class="subpanel mb-5 p-4">
         <div class="mb-3 flex items-center justify-between gap-3">
           <div>
-            <h4 class="text-xs font-semibold uppercase tracking-wider text-slate-400">
+            <h4 class="text-xs font-semibold uppercase tracking-wider text-slate-600">
               {{ i18n.t('tableConfig.autoIncrementId.title') }}
             </h4>
-            <p class="mt-1 text-[10px] text-slate-500">{{ i18n.t('tableConfig.autoIncrementId.hint') }}</p>
+            <p class="field-hint">{{ i18n.t('tableConfig.autoIncrementId.hint') }}</p>
           </div>
-          <label class="flex cursor-pointer items-center gap-2 text-sm text-slate-200">
+          <label class="flex cursor-pointer items-center gap-2 text-sm text-slate-700">
             <input
               type="checkbox"
               [checked]="config().autoIncrementId.enabled"
               (change)="updateAutoIncrementEnabled($event)"
-              class="rounded border-slate-600 bg-slate-800 text-blue-500"
+            class="ui-checkbox"
             >
             <span>{{ i18n.t('tableConfig.autoIncrementId.enabled') }}</span>
           </label>
@@ -131,19 +131,19 @@ import { ColumnValueType } from '../types/column-value-type';
 
         <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
-            <label [attr.for]="'auto-id-column-' + config().id" class="mb-1 block text-xs text-slate-400">{{ i18n.t('tableConfig.autoIncrementId.columnName') }}</label>
+            <label [attr.for]="'auto-id-column-' + config().id" class="field-label">{{ i18n.t('tableConfig.autoIncrementId.columnName') }}</label>
             <input
               [id]="'auto-id-column-' + config().id"
               type="text"
               [ngModel]="config().autoIncrementId.columnName"
               (ngModelChange)="updateAutoIncrementColumnName($event)"
               [disabled]="!config().autoIncrementId.enabled"
-              class="w-full rounded border border-slate-600 bg-slate-900 px-2 py-2 text-sm text-slate-200 outline-none focus:border-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+              class="ui-input"
             >
           </div>
 
           <div>
-            <label [attr.for]="'auto-id-start-' + config().id" class="mb-1 block text-xs text-slate-400">{{ i18n.t('tableConfig.autoIncrementId.startAt') }}</label>
+            <label [attr.for]="'auto-id-start-' + config().id" class="field-label">{{ i18n.t('tableConfig.autoIncrementId.startAt') }}</label>
             <input
               [id]="'auto-id-start-' + config().id"
               type="number"
@@ -151,15 +151,16 @@ import { ColumnValueType } from '../types/column-value-type';
               [ngModel]="config().autoIncrementId.startAt"
               (change)="updateAutoIncrementStartAt($event)"
               [disabled]="!config().autoIncrementId.enabled"
-              class="w-full rounded border border-slate-600 bg-slate-900 px-2 py-2 text-sm text-slate-200 outline-none focus:border-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+              class="ui-input"
             >
           </div>
         </div>
       </div>
 
-      <div class="mb-4 overflow-hidden rounded-lg border border-slate-700">
+      <div class="ui-accordion mb-5">
         <button
-          class="flex w-full items-center justify-between bg-slate-700/50 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700"
+          type="button"
+          class="ui-accordion-header"
           (click)="toggleParentCols()"
         >
           <span>{{ i18n.t('tableConfig.parentColumnMapping') }}</span>
@@ -167,25 +168,25 @@ import { ColumnValueType } from '../types/column-value-type';
         </button>
 
         @if (showParentCols()) {
-          <div class="custom-scrollbar max-h-60 overflow-x-auto overflow-y-auto bg-slate-900/50 p-3 sm:max-h-72">
-            <div class="mb-2 grid min-w-[500px] grid-cols-12 gap-2 px-1 text-xs text-slate-500">
+          <div class="ui-accordion-content custom-scrollbar max-h-60 overflow-x-auto overflow-y-auto p-3 sm:max-h-72">
+            <div class="mb-2 grid min-w-[500px] grid-cols-12 gap-2 px-1 text-xs font-semibold text-slate-500">
               <div class="col-span-1 text-center">{{ i18n.t('tableConfig.include') }}</div>
               <div class="col-span-4">{{ i18n.t('tableConfig.csvHeader') }}</div>
               <div class="col-span-4">{{ i18n.t('tableConfig.sqlColumn') }}</div>
               <div class="col-span-3">{{ i18n.t('tableConfig.valueType') }}</div>
             </div>
             @for (map of config().parentMappings; track map.original) {
-              <div class="mb-2 grid min-w-[500px] grid-cols-12 items-center gap-2">
+              <div class="mapping-row grid min-w-[500px] grid-cols-12 items-center gap-2 py-2">
                 <div class="col-span-1 flex justify-center">
                   <input
                     type="checkbox"
                     [checked]="map.include"
                     [disabled]="isPrimaryKeySelected(map.original)"
                     (change)="updateParentMap(map.original, { include: $any($event.target).checked })"
-                    class="rounded border-slate-600 bg-slate-800 text-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
+                    class="ui-checkbox disabled:cursor-not-allowed disabled:opacity-60"
                   >
                 </div>
-                <div class="col-span-4 truncate font-mono text-xs text-slate-300" title="{{ map.original }}">
+                <div class="col-span-4 truncate font-mono text-xs text-slate-700" title="{{ map.original }}">
                   {{ map.original }}
                 </div>
                 <div class="col-span-4">
@@ -193,14 +194,14 @@ import { ColumnValueType } from '../types/column-value-type';
                     type="text"
                     [ngModel]="map.sqlName"
                     (change)="updateParentMap(map.original, { sqlName: $any($event.target).value })"
-                    class="w-full rounded border border-slate-700 bg-slate-800 px-2 py-1 text-xs text-white outline-none focus:border-blue-500"
+                    class="ui-input !min-h-9 !px-2 !py-1 text-xs"
                   >
                 </div>
                 <div class="col-span-3">
                   <select
                     [ngModel]="map.valueType"
                     (ngModelChange)="updateParentType(map.original, $event)"
-                    class="w-full rounded border border-slate-700 bg-slate-800 px-2 py-1 text-xs text-white outline-none focus:border-blue-500"
+                    class="ui-select !min-h-9 !px-2 !py-1 text-xs"
                   >
                     @for (valueType of valueTypes; track valueType) {
                       <option [value]="valueType">{{ i18n.t('tableConfig.valueTypes.' + valueType) }}</option>
@@ -213,41 +214,41 @@ import { ColumnValueType } from '../types/column-value-type';
         }
       </div>
 
-      <div class="mb-4">
+        <div class="mb-5">
         <label class="flex cursor-pointer items-center gap-2">
           <input
             type="checkbox"
             [checked]="config().hasChildInSameFile"
             (change)="updateHasChild($event)"
-            class="rounded border-slate-600 bg-slate-700 text-purple-500 focus:ring-purple-500"
+            class="ui-checkbox"
           >
-          <span class="text-sm font-medium text-slate-300">{{ i18n.t('tableConfig.hasChildInSameFile') }}</span>
+          <span class="text-sm font-medium text-slate-700">{{ i18n.t('tableConfig.hasChildInSameFile') }}</span>
         </label>
       </div>
 
       @if (config().hasChildInSameFile) {
-        <div class="animate-in slide-in-from-top-2 mt-3 border-l-2 border-purple-500/30 pl-3 fade-in sm:ml-4 sm:pl-4">
-          <h4 class="mb-3 text-sm font-semibold text-purple-300">{{ i18n.t('tableConfig.childTableSettings') }}</h4>
+        <div class="relationship-surface mt-3 space-y-4 p-4 sm:ml-4">
+          <h4 class="text-sm font-semibold text-blue-800">{{ i18n.t('tableConfig.childTableSettings') }}</h4>
 
           <div class="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
             <div>
-              <label [attr.for]="'child-table-name-' + config().id" class="mb-1 block text-xs text-slate-400">{{ i18n.t('tableConfig.childSqlTableName') }}</label>
+              <label [attr.for]="'child-table-name-' + config().id" class="field-label">{{ i18n.t('tableConfig.childSqlTableName') }}</label>
               <input
                 [id]="'child-table-name-' + config().id"
                 type="text"
                 [ngModel]="config().childSqlTableName"
                 (ngModelChange)="updateChildName($event)"
-                class="w-full rounded border border-slate-600 bg-slate-900 px-2 py-2 text-sm text-slate-200 outline-none focus:border-purple-500"
+                class="ui-input"
               >
             </div>
 
             <div>
-              <label [attr.for]="'same-file-target-' + config().id" class="mb-1 block text-xs text-slate-400">{{ i18n.t('tableConfig.relationshipTargetMode') }}</label>
+              <label [attr.for]="'same-file-target-' + config().id" class="field-label">{{ i18n.t('tableConfig.relationshipTargetMode') }}</label>
               <select
                 [id]="'same-file-target-' + config().id"
                 [ngModel]="config().relationshipTargetMode"
                 (ngModelChange)="updateRelationshipTargetMode($event)"
-                class="w-full rounded border border-slate-600 bg-slate-900 px-2 py-2 text-sm text-slate-200 outline-none focus:border-purple-500"
+                class="ui-select"
               >
                 <option value="auto-increment">{{ i18n.t('tableConfig.relationshipTargetModes.auto-increment') }}</option>
                 <option value="selected-pk">{{ i18n.t('tableConfig.relationshipTargetModes.selected-pk') }}</option>
@@ -257,35 +258,35 @@ import { ColumnValueType } from '../types/column-value-type';
 
           @if (config().relationshipTargetMode === 'auto-increment') {
             <div class="mb-4">
-              <label [attr.for]="'same-file-fk-' + config().id" class="mb-1 block text-xs text-slate-400">{{ i18n.t('tableConfig.foreignKeySqlColumn') }}</label>
+              <label [attr.for]="'same-file-fk-' + config().id" class="field-label">{{ i18n.t('tableConfig.foreignKeySqlColumn') }}</label>
               <input
                 [id]="'same-file-fk-' + config().id"
                 type="text"
                 [ngModel]="config().sameFileForeignKeyColumnName"
                 (ngModelChange)="updateSameFileForeignKeyColumnName($event)"
-                class="w-full rounded border border-slate-600 bg-slate-900 px-2 py-2 text-sm text-slate-200 outline-none focus:border-purple-500"
+                class="ui-input"
               >
             </div>
           } @else {
-            <div class="mb-4 overflow-hidden rounded-lg border border-slate-700">
-              <div class="bg-slate-700/50 px-4 py-2 text-sm font-medium text-slate-300">
+            <div class="ui-accordion mb-4">
+              <div class="ui-accordion-header">
                 {{ i18n.t('tableConfig.childForeignKeyColumns') }}
               </div>
-              <div class="space-y-2 bg-slate-900/50 p-3">
+              <div class="space-y-2 p-3">
                 @for (fkConfig of config().sameFileSelectedPkForeignKeys; track fkConfig.parentColumn; let index = $index) {
                   <div class="grid gap-2 md:grid-cols-2">
-                    <div class="rounded border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-300">
-                      <div class="text-[10px] uppercase tracking-wide text-slate-500">{{ i18n.t('tableConfig.parentPkColumn') }}</div>
+                    <div class="rounded border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700">
+                      <div class="text-xs uppercase tracking-wide text-slate-500">{{ i18n.t('tableConfig.parentPkColumn') }}</div>
                       <div class="mt-1 font-mono">{{ fkConfig.parentColumn }}</div>
                     </div>
                     <div>
-                      <label [attr.for]="'same-file-selected-fk-' + config().id + '-' + index" class="mb-1 block text-xs text-slate-400">{{ i18n.t('tableConfig.foreignKeySqlColumn') }}</label>
+                      <label [attr.for]="'same-file-selected-fk-' + config().id + '-' + index" class="field-label">{{ i18n.t('tableConfig.foreignKeySqlColumn') }}</label>
                       <input
                         [id]="'same-file-selected-fk-' + config().id + '-' + index"
                         type="text"
                         [ngModel]="fkConfig.fkColumnName"
                         (ngModelChange)="updateSameFileSelectedPkForeignKey(fkConfig.parentColumn, $event)"
-                        class="w-full rounded border border-slate-600 bg-slate-900 px-2 py-2 text-sm text-slate-200 outline-none focus:border-purple-500"
+                        class="ui-input"
                       >
                     </div>
                   </div>
@@ -294,9 +295,10 @@ import { ColumnValueType } from '../types/column-value-type';
             </div>
           }
 
-          <div class="overflow-hidden rounded-lg border border-slate-700">
+          <div class="ui-accordion">
             <button
-              class="flex w-full items-center justify-between bg-slate-700/50 px-4 py-2 text-sm font-medium text-slate-300 hover:bg-slate-700"
+              type="button"
+              class="ui-accordion-header"
               (click)="toggleChildCols()"
             >
               <span>{{ i18n.t('tableConfig.childColumnMapping') }}</span>
@@ -304,24 +306,24 @@ import { ColumnValueType } from '../types/column-value-type';
             </button>
 
             @if (showChildCols()) {
-              <div class="custom-scrollbar max-h-60 overflow-x-auto overflow-y-auto bg-slate-900/50 p-3 sm:max-h-72">
-                <div class="mb-2 grid min-w-[500px] grid-cols-12 gap-2 px-1 text-xs text-slate-500">
+              <div class="ui-accordion-content custom-scrollbar max-h-60 overflow-x-auto overflow-y-auto p-3 sm:max-h-72">
+                <div class="mb-2 grid min-w-[500px] grid-cols-12 gap-2 px-1 text-xs font-semibold text-slate-500">
                   <div class="col-span-1 text-center">{{ i18n.t('tableConfig.include') }}</div>
                   <div class="col-span-4">{{ i18n.t('tableConfig.csvHeader') }}</div>
                   <div class="col-span-4">{{ i18n.t('tableConfig.sqlColumn') }}</div>
                   <div class="col-span-3">{{ i18n.t('tableConfig.valueType') }}</div>
                 </div>
                 @for (map of config().childMappings; track map.original) {
-                  <div class="mb-2 grid min-w-[500px] grid-cols-12 items-center gap-2">
+                  <div class="mapping-row grid min-w-[500px] grid-cols-12 items-center gap-2 py-2">
                     <div class="col-span-1 flex justify-center">
                       <input
                         type="checkbox"
                         [checked]="map.include"
                         (change)="updateChildMap(map.original, { include: $any($event.target).checked })"
-                        class="rounded border-slate-600 bg-slate-800 text-purple-500"
+                        class="ui-checkbox"
                       >
                     </div>
-                    <div class="col-span-4 truncate font-mono text-xs text-slate-300" title="{{ map.original }}">
+                    <div class="col-span-4 truncate font-mono text-xs text-slate-700" title="{{ map.original }}">
                       {{ map.original }}
                     </div>
                     <div class="col-span-4">
@@ -329,14 +331,14 @@ import { ColumnValueType } from '../types/column-value-type';
                         type="text"
                         [ngModel]="map.sqlName"
                         (change)="updateChildMap(map.original, { sqlName: $any($event.target).value })"
-                        class="w-full rounded border border-slate-700 bg-slate-800 px-2 py-1 text-xs text-white outline-none focus:border-purple-500"
+                        class="ui-input !min-h-9 !px-2 !py-1 text-xs"
                       >
                     </div>
                     <div class="col-span-3">
                       <select
                         [ngModel]="map.valueType"
                         (ngModelChange)="updateChildType(map.original, $event)"
-                        class="w-full rounded border border-slate-700 bg-slate-800 px-2 py-1 text-xs text-white outline-none focus:border-purple-500"
+                        class="ui-select !min-h-9 !px-2 !py-1 text-xs"
                       >
                         @for (valueType of valueTypes; track valueType) {
                           <option [value]="valueType">{{ i18n.t('tableConfig.valueTypes.' + valueType) }}</option>
@@ -350,14 +352,14 @@ import { ColumnValueType } from '../types/column-value-type';
           </div>
         </div>
       } @else {
-        <div class="mt-4 space-y-4 border-t border-slate-700/50 pt-4">
+        <div class="mt-5 space-y-4 border-t border-slate-200 pt-5">
           <div>
-            <label [attr.for]="'external-parent-' + config().id" class="mb-1 block text-xs text-slate-400">{{ i18n.t('tableConfig.parentTableDifferentFile') }}</label>
+            <label [attr.for]="'external-parent-' + config().id" class="field-label">{{ i18n.t('tableConfig.parentTableDifferentFile') }}</label>
             <select
               [id]="'external-parent-' + config().id"
               [ngModel]="config().externalParentTableId"
               (ngModelChange)="updateExternalParent($event)"
-              class="w-full rounded border border-slate-600 bg-slate-900 px-2 py-2 text-sm text-slate-200 outline-none focus:border-blue-500"
+              class="ui-select"
             >
               <option [ngValue]="null">{{ i18n.t('tableConfig.noExternalParent') }}</option>
               @for (opt of tableOptions(); track opt.id) {
@@ -371,12 +373,12 @@ import { ColumnValueType } from '../types/column-value-type';
           @if (externalParentTable()) {
             <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
-                <label [attr.for]="'external-target-' + config().id" class="mb-1 block text-xs text-slate-400">{{ i18n.t('tableConfig.relationshipTargetMode') }}</label>
+                <label [attr.for]="'external-target-' + config().id" class="field-label">{{ i18n.t('tableConfig.relationshipTargetMode') }}</label>
                 <select
                   [id]="'external-target-' + config().id"
                   [ngModel]="config().relationshipTargetMode"
                   (ngModelChange)="updateRelationshipTargetMode($event)"
-                  class="w-full rounded border border-slate-600 bg-slate-900 px-2 py-2 text-sm text-slate-200 outline-none focus:border-blue-500"
+                  class="ui-select"
                 >
                   <option value="auto-increment">{{ i18n.t('tableConfig.relationshipTargetModes.auto-increment') }}</option>
                   <option value="selected-pk">{{ i18n.t('tableConfig.relationshipTargetModes.selected-pk') }}</option>
@@ -384,24 +386,24 @@ import { ColumnValueType } from '../types/column-value-type';
               </div>
             </div>
 
-            <div class="overflow-hidden rounded-lg border border-slate-700">
-              <div class="bg-slate-700/50 px-4 py-2 text-sm font-medium text-slate-300">
+            <div class="ui-accordion">
+              <div class="ui-accordion-header">
                 {{ i18n.t('tableConfig.externalRelationshipMapping') }}
               </div>
-              <div class="space-y-2 bg-slate-900/50 p-3">
+              <div class="space-y-2 p-3">
                 @for (mapping of config().externalRelationshipSourceMappings; track mapping.parentColumn; let index = $index) {
                   <div class="grid gap-2 md:grid-cols-2">
-                    <div class="rounded border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-300">
-                      <div class="text-[10px] uppercase tracking-wide text-slate-500">{{ i18n.t('tableConfig.parentPkColumn') }}</div>
+                    <div class="rounded border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700">
+                      <div class="text-xs uppercase tracking-wide text-slate-500">{{ i18n.t('tableConfig.parentPkColumn') }}</div>
                       <div class="mt-1 font-mono">{{ mapping.parentColumn }}</div>
                     </div>
                     <div>
-                      <label [attr.for]="'external-source-' + config().id + '-' + index" class="mb-1 block text-xs text-slate-400">{{ i18n.t('tableConfig.childSourceColumn') }}</label>
+                      <label [attr.for]="'external-source-' + config().id + '-' + index" class="field-label">{{ i18n.t('tableConfig.childSourceColumn') }}</label>
                       <select
                         [id]="'external-source-' + config().id + '-' + index"
                         [ngModel]="mapping.childColumn"
                         (ngModelChange)="updateExternalSourceMapping(mapping.parentColumn, $event)"
-                        class="w-full rounded border border-slate-600 bg-slate-900 px-2 py-2 text-sm text-slate-200 outline-none focus:border-blue-500"
+                        class="ui-select"
                       >
                         <option [ngValue]="null">{{ i18n.t('tableConfig.selectForeignKey') }}</option>
                         @for (col of config().columns; track col) {
@@ -416,35 +418,35 @@ import { ColumnValueType } from '../types/column-value-type';
 
             @if (config().relationshipTargetMode === 'auto-increment') {
               <div>
-                <label [attr.for]="'external-fk-' + config().id" class="mb-1 block text-xs text-slate-400">{{ i18n.t('tableConfig.foreignKeySqlColumn') }}</label>
+                <label [attr.for]="'external-fk-' + config().id" class="field-label">{{ i18n.t('tableConfig.foreignKeySqlColumn') }}</label>
                 <input
                   [id]="'external-fk-' + config().id"
                   type="text"
                   [ngModel]="config().externalForeignKeyColumnName"
                   (ngModelChange)="updateExternalForeignKeyColumnName($event)"
-                  class="w-full rounded border border-slate-600 bg-slate-900 px-2 py-2 text-sm text-slate-200 outline-none focus:border-blue-500"
+                  class="ui-input"
                 >
               </div>
             } @else {
-              <div class="overflow-hidden rounded-lg border border-slate-700">
-                <div class="bg-slate-700/50 px-4 py-2 text-sm font-medium text-slate-300">
+              <div class="ui-accordion">
+                <div class="ui-accordion-header">
                   {{ i18n.t('tableConfig.childForeignKeyColumns') }}
                 </div>
-                <div class="space-y-2 bg-slate-900/50 p-3">
+                <div class="space-y-2 p-3">
                   @for (fkConfig of config().externalSelectedPkForeignKeys; track fkConfig.parentColumn; let index = $index) {
                     <div class="grid gap-2 md:grid-cols-2">
-                      <div class="rounded border border-slate-700 bg-slate-900 px-3 py-2 text-xs text-slate-300">
-                        <div class="text-[10px] uppercase tracking-wide text-slate-500">{{ i18n.t('tableConfig.parentPkColumn') }}</div>
+                      <div class="rounded border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700">
+                        <div class="text-xs uppercase tracking-wide text-slate-500">{{ i18n.t('tableConfig.parentPkColumn') }}</div>
                         <div class="mt-1 font-mono">{{ fkConfig.parentColumn }}</div>
                       </div>
                       <div>
-                        <label [attr.for]="'external-selected-fk-' + config().id + '-' + index" class="mb-1 block text-xs text-slate-400">{{ i18n.t('tableConfig.foreignKeySqlColumn') }}</label>
+                        <label [attr.for]="'external-selected-fk-' + config().id + '-' + index" class="field-label">{{ i18n.t('tableConfig.foreignKeySqlColumn') }}</label>
                         <input
                           [id]="'external-selected-fk-' + config().id + '-' + index"
                           type="text"
                           [ngModel]="fkConfig.fkColumnName"
                           (ngModelChange)="updateExternalSelectedPkForeignKey(fkConfig.parentColumn, $event)"
-                          class="w-full rounded border border-slate-600 bg-slate-900 px-2 py-2 text-sm text-slate-200 outline-none focus:border-blue-500"
+                          class="ui-input"
                         >
                       </div>
                     </div>

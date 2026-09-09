@@ -9,20 +9,20 @@ import { LoadingService } from '../services/loading.service';
   template: `
     @if (loading.state().active) {
       <div
-        class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 backdrop-blur-sm"
+        class="loading-backdrop"
         role="status"
         aria-live="polite"
         aria-busy="true"
       >
-        <div class="mx-4 w-full max-w-sm rounded-lg border border-slate-700 bg-slate-900 px-6 py-5 shadow-2xl">
+        <div class="loading-panel">
           <div class="flex items-start gap-4">
             <div
-              class="mt-0.5 h-8 w-8 animate-spin rounded-full border-2 border-slate-600 border-t-blue-500"
+              class="mt-0.5 h-7 w-7 animate-spin rounded-full border-2 border-slate-300 border-t-blue-600"
               aria-hidden="true"
             ></div>
             <div class="min-w-0">
-              <p class="text-sm font-semibold text-white">{{ i18n.t(loading.state().titleKey) }}</p>
-              <p class="mt-1 text-sm text-slate-400">{{ i18n.t(loading.state().messageKey) }}</p>
+              <p class="text-sm font-semibold text-slate-900">{{ i18n.t(loading.state().titleKey) }}</p>
+              <p class="mt-1 text-sm text-slate-600">{{ i18n.t(loading.state().messageKey) }}</p>
             </div>
           </div>
         </div>
