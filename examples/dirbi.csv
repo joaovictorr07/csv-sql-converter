@@ -1,0 +1,5 @@
+periodo,cnpj,beneficio_codigo,beneficio_nome,receita_codigo,receita_valor,ativo
+2024-01,12345678000190,PERSE,Programa Emergencial de Retomada do Setor de Eventos,IRPJ,1250.50,1
+2024-01,12345678000190,PERSE,Programa Emergencial de Retomada do Setor de Eventos,CSLL,840.75,1
+2024-01,12345678000190,REINTEGRA,Regime Especial de Reintegracao de Valores Tributarios,IPI,315.00,0
+2024-02,12345678000190,PERSE,Programa Emergencial de Retomada do Setor de Eventos,PIS,210.10,1

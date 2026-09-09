@@ -65,8 +65,12 @@
           </h2>
 
           <div class="mb-6 space-y-4">
-            <label class="block text-sm text-slate-400">{{ i18n.t('generation.sqlOperation') }}</label>
-            <div class="grid grid-cols-1 gap-2 rounded-lg bg-slate-900 p-1 sm:grid-cols-3">
+            <p class="block text-sm text-slate-400">{{ i18n.t('generation.sqlOperation') }}</p>
+            <div
+              class="grid grid-cols-1 gap-2 rounded-lg bg-slate-900 p-1 sm:grid-cols-3"
+              role="group"
+              [attr.aria-label]="i18n.t('generation.sqlOperation')"
+            >
               <button
                 class="rounded px-3 py-2 text-sm font-medium transition-colors"
                 [class.bg-blue-600]="store.sqlOperation() === 'INSERT'"

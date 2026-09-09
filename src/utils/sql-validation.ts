@@ -1,11 +1,6 @@
 import { ColumnMapping } from '../models/column-mapping';
-import {
-  ExternalRelationshipSourceMapping,
-  ForeignKeySqlColumnConfig,
-  RelationshipTargetMode,
-  TableConfig
-} from '../models/table-config';
-import { ValidationIssue, ValidationIssueCode } from '../types/sql-generation';
+import { ForeignKeySqlColumnConfig, TableConfig } from '../models/table-config';
+import { ValidationIssue } from '../types/sql-generation';
 import { SqlOperation } from '../types/sql-operation';
 import { normalizeSqlIdentifierOrEmpty } from './sql-identifiers';
 

@@ -1,0 +1,3 @@
+periodo,cnpj,beneficio_codigo,classificacao_codigo,descricao
+2024-01,12345678000190,PERSE,CT-001,Receita incentivada de eventos
+2024-03,12345678000190,NAO_EXISTE,CT-999,Registro sem pai correspondente

@@ -1,10 +1,11 @@
-import { Component, inject } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
 import { I18nService } from '../services/i18n.service';
 import { LoadingService } from '../services/loading.service';
 
 @Component({
   selector: 'app-loading-overlay',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (loading.state().active) {
       <div

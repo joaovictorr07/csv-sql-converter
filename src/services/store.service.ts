@@ -2,6 +2,7 @@ import { Injectable, computed, inject, signal } from '@angular/core';
 import { ColumnMapping } from '../models/column-mapping';
 import {
   AutoIncrementIdConfig,
+  CsvRow,
   ExternalRelationshipSourceMapping,
   ForeignKeySqlColumnConfig,
   RelationshipTargetMode,
@@ -9,9 +10,7 @@ import {
 } from '../models/table-config';
 import {
   SqlGenerationResponse,
-  ValidationIssue,
-  ValidationIssueCode,
-  ValidationIssueSeverity
+  ValidationIssue
 } from '../types/sql-generation';
 import { SqlOperation } from '../types/sql-operation';
 import { decodeCsvFile } from '../utils/csv-text-decoder';
@@ -407,7 +406,7 @@ export class StoreService {
     this.applyTableUpdates((current) => [...current, newTable]);
   }
 
-  private parseRawData(content: string, delimiter: string): { headers: string[]; data: any[] } {
+  private parseRawData(content: string, delimiter: string): { headers: string[]; data: CsvRow[] } {
     const rows: string[][] = [];
     let currentRow: string[] = [];
     let currentField = '';
@@ -470,14 +469,11 @@ export class StoreService {
     });
 
     const data = rows.slice(1).map((values) => {
-      const row: any = {};
+      const row: CsvRow = {};
 
       headers.forEach((header, index) => {
-        let value = values[index];
-        if (value !== undefined) value = value.trim();
-        if (value === 'null') value = null;
-        if (value === '') value = null;
-        row[header] = value;
+        const value = values[index]?.trim();
+        row[header] = value === undefined || value === 'null' || value === '' ? null : value;
       });
 
       return row;
@@ -626,11 +622,11 @@ export class StoreService {
       fkColumn: issue.fkColumnName ?? '',
       csvLineNumber: issue.csvLineNumber ?? '',
       rawValue: issue.rawValue ?? '',
-      targetLabel: this.translateValidationTarget(String(issue.params.target ?? 'parent')),
-      contextLabel: this.translateValidationContext(String(issue.params.contextKey ?? 'parentColumns')),
-      parentType: this.translateValueType(String(issue.params.parentType ?? 'string')),
-      childType: this.translateValueType(String(issue.params.childType ?? 'string')),
-      expectedType: this.translateValueType(String(issue.params.expectedType ?? 'string'))
+      targetLabel: this.translateValidationTarget(String(issue.params['target'] ?? 'parent')),
+      contextLabel: this.translateValidationContext(String(issue.params['contextKey'] ?? 'parentColumns')),
+      parentType: this.translateValueType(String(issue.params['parentType'] ?? 'string')),
+      childType: this.translateValueType(String(issue.params['childType'] ?? 'string')),
+      expectedType: this.translateValueType(String(issue.params['expectedType'] ?? 'string'))
     };
 
     return this.i18n.t(`validationIssues.${issue.code}`, params);

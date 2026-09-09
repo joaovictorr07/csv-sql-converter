@@ -19,6 +19,8 @@ export interface ExternalRelationshipSourceMapping {
   childColumn: string | null;
 }
 
+export type CsvRow = Record<string, string | null>;
+
 export interface TableConfig {
   id: string;
   name: string; // File name (display only)
@@ -33,7 +35,7 @@ export interface TableConfig {
   primaryKeyColumns: string[]; // CSV columns used as PK/Grouping
   columns: string[]; // All original headers
   parentMappings: ColumnMapping[];
-  data: any[]; // Array of row objects
+  data: CsvRow[]; // Parsed CSV rows
   selected: boolean;
 
   // Single-File Parent/Child Mode

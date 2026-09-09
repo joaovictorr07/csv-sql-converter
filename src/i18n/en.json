@@ -4,7 +4,7 @@
   },
   "header": {
     "title": "CSV to SQL Converter",
-    "subtitle": "Transform CSV data into relational SQL scripts with ease.",
+    "subtitle": "Generate simple and relational SQL scripts directly in the browser without sending CSVs to a server.",
     "languageLabel": "Language"
   },
   "languages": {
@@ -26,13 +26,14 @@
   },
   "upload": {
     "prompt": "Drop CSV files here or click to upload",
-    "support": "Supports multiple files"
+    "support": "Supports multiple files",
+    "privacy": "100% local processing: your CSVs stay in the browser."
   },
   "tableConfig": {
     "remove": "Remove",
     "rows": "{{count}} rows",
     "columns": "{{count}} columns",
-    "parsingSettings": "CSV Parsing & Value Settings",
+    "parsingSettings": "Parsing & Value Conversion",
     "delimiter": "Delimiter",
     "delimiterReparseHint": "Changing this re-parses the file.",
     "delimiters": {
@@ -59,7 +60,7 @@
       "columnName": "ID column name",
       "startAt": "Start counter at"
     },
-    "parentColumnMapping": "Column Mapping (Parent)",
+    "parentColumnMapping": "Column Mapping (Main/Parent)",
     "childColumnMapping": "Column Mapping (Child)",
     "columnMappingSelected": "{{count}} selected",
     "include": "Inc.",
@@ -72,8 +73,8 @@
       "decimal": "Decimal",
       "bool": "Boolean"
     },
-    "hasChildInSameFile": "Has Child Table in Same File?",
-    "childTableSettings": "Child Table Settings",
+    "hasChildInSameFile": "Generate a child table from this same CSV",
+    "childTableSettings": "Child table in the same CSV",
     "childSqlTableName": "Child SQL Table Name",
     "relationshipTargetMode": "Relationship Target",
     "relationshipTargetModes": {
@@ -84,8 +85,8 @@
     "childForeignKeyColumns": "Generated FK columns on child",
     "parentPkColumn": "Parent PK column",
     "childSourceColumn": "Source column in child file",
-    "externalRelationshipMapping": "External logical key mapping",
-    "parentTableDifferentFile": "Parent Table (Different File)",
+    "externalRelationshipMapping": "Logical key mapping across files",
+    "parentTableDifferentFile": "Relate to a parent table from another CSV",
     "noExternalParent": "-- No External Parent --",
     "foreignKeyThisFile": "Foreign Key (In this file)",
     "selectForeignKey": "-- Select FK --"

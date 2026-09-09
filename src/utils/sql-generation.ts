@@ -268,13 +268,13 @@ function formatTypedSqlValue(spec: TypedValueSpec, value: unknown): string {
       return `'${rawValue.replace(/'/g, "''")}'`;
     case 'int':
       if (/^[+-]?\d+$/.test(trimmedValue)) return trimmedValue;
-      throwInvalidTypedValue(spec, rawValue);
+      return throwInvalidTypedValue(spec, rawValue);
     case 'decimal':
       if (/^[+-]?\d+(?:[,.]\d+)?$/.test(trimmedValue)) {
         return trimmedValue.replace(',', '.');
       }
 
-      throwInvalidTypedValue(spec, rawValue);
+      return throwInvalidTypedValue(spec, rawValue);
     case 'bool':
       return formatBooleanValue(trimmedValue, spec.booleanMode, spec, rawValue);
     default:

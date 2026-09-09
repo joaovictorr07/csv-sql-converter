@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { AppLoadingOverlayComponent } from './components/app-loading-overlay.component';
 import { TableConfigComponent } from './components/table-config.component';
 import { UploadComponent } from './components/upload.component';
@@ -10,6 +10,7 @@ import { Locale } from './types/locale';
 @Component({
   selector: 'app-root',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, UploadComponent, TableConfigComponent, AppLoadingOverlayComponent],
   templateUrl: './app.component.html'
 })

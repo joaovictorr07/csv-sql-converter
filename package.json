@@ -1,31 +1,47 @@
 {
   "name": "csv-to-sql-converter",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "Projeto de estudo em Angular zoneless para converter arquivos CSV em scripts SQL no navegador.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/joaovictorr07/csv-sql-converter.git"
+  },
+  "engines": {
+    "node": "^20.19.0 || ^22.13.0 || >=24.0.0"
+  },
   "type": "module",
   "scripts": {
     "dev": "ng serve",
     "build": "ng build",
     "preview": "ng serve --configuration=production",
-    "test": "vitest run"
+    "lint": "eslint .",
+    "test": "vitest run",
+    "check": "npm run lint && npm test && npm run build"
   },
   "dependencies": {
-    "@angular/build": "^21.1.0",
-    "@angular/cli": "^21.1.0",
-    "@angular/common": "^21.1.0",
-    "@angular/compiler": "^21.1.0",
-    "@angular/compiler-cli": "^21.1.0",
-    "@angular/core": "^21.1.0",
-    "@angular/forms": "^21.1.0",
-    "@angular/platform-browser": "^21.1.0",
-    "rxjs": "^7.8.2",
-    "tailwindcss": "latest"
+    "@angular/common": "^21.2.22",
+    "@angular/compiler": "^21.2.22",
+    "@angular/core": "^21.2.22",
+    "@angular/forms": "^21.2.22",
+    "@angular/platform-browser": "^21.2.22",
+    "rxjs": "^7.8.2"
   },
   "devDependencies": {
-    "@types/node": "^22.14.0",
+    "@angular/build": "^21.2.23",
+    "@angular/cli": "^21.2.23",
+    "@angular/compiler-cli": "^21.2.22",
+    "@eslint/js": "^9.39.5",
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/node": "^22.20.0",
+    "angular-eslint": "^21.4.0",
+    "eslint": "^9.39.5",
     "jsdom": "^26.1.0",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.3.3",
     "typescript": "^5.9.3",
-    "vite": "^6.2.0",
-    "vitest": "^4.1.5"
+    "typescript-eslint": "^8.0.0",
+    "vitest": "^4.1.11"
   }
 }

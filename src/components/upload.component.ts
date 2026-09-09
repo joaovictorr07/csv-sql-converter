@@ -1,19 +1,18 @@
-import { Component, inject, output } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, output } from '@angular/core';
 import { I18nService } from '../services/i18n.service';
 
 @Component({
   selector: 'app-upload',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div
-      class="cursor-pointer rounded-xl border-2 border-dashed border-slate-600 p-5 text-center transition-colors hover:border-blue-500 hover:bg-slate-800/50 sm:p-8"
-      (click)="fileInput.click()"
+    <label
+      class="block w-full cursor-pointer rounded-xl border-2 border-dashed border-slate-600 p-5 text-center transition-colors hover:border-blue-500 hover:bg-slate-800/50 sm:p-8"
       (drop)="onDrop($event)"
       (dragover)="onDragOver($event)"
       (dragleave)="onDragLeave($event)"
     >
       <input
-        #fileInput
         type="file"
         multiple
         accept=".csv"
@@ -26,8 +25,9 @@ import { I18nService } from '../services/i18n.service';
         </svg>
         <p class="text-sm font-medium text-slate-300 sm:text-base">{{ i18n.t('upload.prompt') }}</p>
         <p class="text-xs text-slate-500">{{ i18n.t('upload.support') }}</p>
+        <p class="text-xs text-blue-300/80">{{ i18n.t('upload.privacy') }}</p>
       </div>
-    </div>
+    </label>
   `
 })
 export class UploadComponent {

@@ -4,11 +4,11 @@
   },
   "header": {
     "title": "Conversor de CSV para SQL",
-    "subtitle": "Transforme dados CSV em scripts SQL relacionais com facilidade.",
+    "subtitle": "Gere scripts SQL simples e relacionais diretamente no navegador, sem enviar seus CSVs para servidor.",
     "languageLabel": "Idioma"
   },
   "languages": {
-    "pt-BR": "Portugu\u00eas (Brasil)",
+    "pt-BR": "Português (Brasil)",
     "en": "English"
   },
   "steps": {
@@ -17,8 +17,8 @@
     "generate": "Gerar"
   },
   "generation": {
-    "sqlOperation": "Opera\u00e7\u00e3o SQL",
-    "primaryKeyNote": "Observa\u00e7\u00e3o: UPDATE e DELETE exigem uma ou mais colunas de chave prim\u00e1ria v\u00e1lidas selecionadas para cada tabela.",
+    "sqlOperation": "Operação SQL",
+    "primaryKeyNote": "Observação: UPDATE e DELETE exigem uma ou mais colunas de chave primária válidas selecionadas para cada tabela.",
     "generateSql": "Gerar SQL",
     "generating": "Gerando...",
     "copy": "Copiar",
@@ -26,44 +26,45 @@
   },
   "upload": {
     "prompt": "Solte arquivos CSV aqui ou clique para fazer upload",
-    "support": "Suporta m\u00faltiplos arquivos"
+    "support": "Suporta múltiplos arquivos",
+    "privacy": "Processamento 100% local: seus CSVs permanecem no navegador."
   },
   "tableConfig": {
     "remove": "Remover",
     "rows": "{{count}} linhas",
     "columns": "{{count}} colunas",
-    "parsingSettings": "Configura\u00e7\u00f5es de parsing e valores do CSV",
+    "parsingSettings": "Parsing e conversão de valores",
     "delimiter": "Delimitador",
     "delimiterReparseHint": "Alterar isso reprocessa o arquivo.",
     "delimiters": {
-      "comma": "V\u00edrgula (,)",
-      "semicolon": "Ponto e v\u00edrgula (;)",
+      "comma": "Vírgula (,)",
+      "semicolon": "Ponto e vírgula (;)",
       "pipe": "Pipe (|)",
-      "tab": "Tabula\u00e7\u00e3o (\\t)"
+      "tab": "Tabulação (\\t)"
     },
     "booleanHandling": "Tratamento de booleano (0/1)",
     "booleanOptions": {
-      "AS_IS": "Como est\u00e1 (0 ou 1)",
+      "AS_IS": "Como está (0 ou 1)",
       "TRUE_FALSE": "Booleano SQL (FALSE/TRUE)",
-      "BIT": "Num\u00e9rico (0/1)",
+      "BIT": "Numérico (0/1)",
       "STRING": "Texto ('0'/'1')"
     },
     "sqlTableName": "Nome da tabela SQL",
-    "primaryKeyGrouping": "Chaves prim\u00e1rias (chave de agrupamento)",
-    "primaryKeyPk": "Chaves prim\u00e1rias (PK)",
-    "primaryKeyHint": "Selecione uma ou mais colunas para compor a chave prim\u00e1ria.",
+    "primaryKeyGrouping": "Chaves primárias (chave de agrupamento)",
+    "primaryKeyPk": "Chaves primárias (PK)",
+    "primaryKeyHint": "Selecione uma ou mais colunas para compor a chave primária.",
     "autoIncrementId": {
-      "title": "ID autom\u00e1tico",
+      "title": "ID automático",
       "hint": "Gera um identificador incremental no INSERT da tabela pai/principal.",
-      "enabled": "Habilitar ID autom\u00e1tico",
+      "enabled": "Habilitar ID automático",
       "columnName": "Nome da coluna de ID",
       "startAt": "Iniciar contador em"
     },
-    "parentColumnMapping": "Mapeamento de colunas (pai)",
-    "childColumnMapping": "Mapeamento de colunas (filho)",
+    "parentColumnMapping": "Mapeamento de colunas (principal/pai)",
+    "childColumnMapping": "Mapeamento de colunas (filha)",
     "columnMappingSelected": "{{count}} selecionadas",
     "include": "Inc.",
-    "csvHeader": "Cabe\u00e7alho CSV",
+    "csvHeader": "Cabeçalho CSV",
     "sqlColumn": "Coluna SQL",
     "valueType": "Tipo",
     "valueTypes": {
@@ -72,20 +73,20 @@
       "decimal": "Decimal",
       "bool": "Booleano"
     },
-    "hasChildInSameFile": "Tem tabela filha no mesmo arquivo?",
-    "childTableSettings": "Configura\u00e7\u00f5es da tabela filha",
+    "hasChildInSameFile": "Gerar tabela filha a partir deste mesmo CSV",
+    "childTableSettings": "Tabela filha no mesmo CSV",
     "childSqlTableName": "Nome da tabela SQL filha",
-    "relationshipTargetMode": "Destino da refer\u00eancia",
+    "relationshipTargetMode": "Destino da referência",
     "relationshipTargetModes": {
-      "auto-increment": "ID autom\u00e1tico do pai",
+      "auto-increment": "ID automático do pai",
       "selected-pk": "PK selecionada do pai"
     },
     "foreignKeySqlColumn": "Coluna SQL da FK",
     "childForeignKeyColumns": "Colunas FK geradas na filha",
     "parentPkColumn": "Coluna PK do pai",
     "childSourceColumn": "Coluna de origem no arquivo filho",
-    "externalRelationshipMapping": "Mapeamento da chave l\u00f3gica externa",
-    "parentTableDifferentFile": "Tabela pai (arquivo diferente)",
+    "externalRelationshipMapping": "Mapeamento da chave lógica entre arquivos",
+    "parentTableDifferentFile": "Relacionar com tabela pai de outro CSV",
     "noExternalParent": "-- Sem pai externo --",
     "foreignKeyThisFile": "Chave estrangeira (neste arquivo)",
     "selectForeignKey": "-- Selecionar FK --"
@@ -147,19 +148,19 @@
     },
     "sqlGeneration": {
       "UNEXPECTED_GENERATION_ERROR": "Falha ao gerar o SQL.",
-      "WORKER_RUNTIME_ERROR": "A gera\u00e7\u00e3o de SQL falhou durante a execu\u00e7\u00e3o em segundo plano.",
-      "WORKER_INVALID_RESPONSE": "A gera\u00e7\u00e3o de SQL retornou uma resposta inv\u00e1lida."
+      "WORKER_RUNTIME_ERROR": "A geração de SQL falhou durante a execução em segundo plano.",
+      "WORKER_INVALID_RESPONSE": "A geração de SQL retornou uma resposta inválida."
     }
   },
   "sql": {
     "generatedScript": "Script SQL gerado",
-    "operationLabel": "Opera\u00e7\u00e3o",
+    "operationLabel": "Operação",
     "dateLabel": "Data",
     "sourceFileLabel": "Arquivo de origem",
     "noColumnsSelected": "Nenhuma coluna selecionada para {{tableName}}",
-    "pkRequiredUpdate": "Erro: ao menos uma coluna de PK v\u00e1lida \u00e9 obrigat\u00f3ria para UPDATE",
-    "pkRequiredDelete": "Erro: ao menos uma coluna de PK v\u00e1lida \u00e9 obrigat\u00f3ria para DELETE",
-    "noColumnsToUpdate": "Erro: nenhuma coluna restante para UPDATE em {{tableName}} ap\u00f3s remover as PKs selecionadas",
-    "pkGroupingRequiredParentChild": "Erro: ao menos uma coluna de chave prim\u00e1ria (chave de agrupamento) v\u00e1lida \u00e9 obrigat\u00f3ria para gera\u00e7\u00e3o pai-filho em {{tableName}}"
+    "pkRequiredUpdate": "Erro: ao menos uma coluna de PK válida é obrigatória para UPDATE",
+    "pkRequiredDelete": "Erro: ao menos uma coluna de PK válida é obrigatória para DELETE",
+    "noColumnsToUpdate": "Erro: nenhuma coluna restante para UPDATE em {{tableName}} após remover as PKs selecionadas",
+    "pkGroupingRequiredParentChild": "Erro: ao menos uma coluna de chave primária (chave de agrupamento) válida é obrigatória para geração pai-filho em {{tableName}}"
   }
 }
