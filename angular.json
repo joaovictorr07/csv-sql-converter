@@ -18,6 +18,13 @@
             },
             "browser": "index.ts",
             "tsConfig": "tsconfig.json",
+            "assets": [
+              {
+                "glob": "favicon.ico",
+                "input": "src/assets",
+                "output": "assets"
+              }
+            ],
             "styles": [
               "src/styles.css"
             ]
